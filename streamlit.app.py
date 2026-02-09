@@ -18,7 +18,6 @@ def conectar_sheet():
     client = gspread.authorize(creds)
     return client.open_by_key(SHEET_ID).sheet1
 
-
 # ================= LOGIN SIMPLE =================
 USUARIOS = {
     "admin": "1234",
@@ -27,9 +26,8 @@ USUARIOS = {
 
 def login():
     st.markdown("<h2 style='text-align:center;'>🔐 Ingreso al Sistema</h2>", unsafe_allow_html=True)
-    usuario = st.text_input("Usuario")
-    contrasena = st.text_input("Contraseña", type="password")
-
+    usuario = st.text_input("Usuario", key="login_usuario")
+    contrasena = st.text_input("Contraseña", type="password", key="login_contra")
     if st.button("Ingresar"):
         if usuario in USUARIOS and USUARIOS[usuario] == contrasena:
             st.session_state["login"] = True
@@ -38,7 +36,6 @@ def login():
             st.experimental_rerun()
         else:
             st.error("Usuario o contraseña incorrectos ❌")
-
 
 if "login" not in st.session_state:
     st.session_state["login"] = False
@@ -67,6 +64,22 @@ st.markdown("""
     box-shadow: 0 3px 8px rgba(0,0,0,0.1);
     margin-bottom: 25px;
 }
+.stButton>button {
+    background-color: #1f77b4;
+    color: white;
+    font-weight: bold;
+    border-radius: 10px;
+    padding: 12px 25px;
+    border: none;
+    transition: all 0.2s ease-in-out;
+}
+.stButton>button:hover {
+    background-color: #155a8a;
+    transform: scale(1.05);
+}
+textarea {
+    border-radius: 6px !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -77,12 +90,9 @@ st.title("📋 Ficha de Registro de Actividades UT")
 
 # ================= DATOS GENERALES =================
 titulo("Datos Generales")
-
 with st.container():
     st.markdown("<div class='tarjeta'>", unsafe_allow_html=True)
-
     col1, col2, col3, col4, col5 = st.columns(5)
-
     with col1:
         ut = st.selectbox("UT", [
             "",
@@ -92,87 +102,71 @@ with st.container():
             "UT - LIMA METROPOLITANA Y CALLAO","UT - LIMA PROVINCIAS","UT - LORETO",
             "UT - MADRE DE DIOS","UT - MOQUEGUA","UT - PASCO","UT - PIURA",
             "UT - PUNO","UT - SAN MARTIN","UT - TACNA","UT - TUMBES","UT - UCAYALI"
-        ])
-
+        ], key="ut")
     with col2:
-        fecha = st.date_input("Fecha", max_value=datetime.today())
-
+        fecha = st.date_input("Fecha", max_value=datetime.today(), key="fecha")
     with col3:
-        codigo_usuario = st.text_input("Código de Usuario")
-
+        codigo_usuario = st.text_input("Código de Usuario", key="codigo_usuario")
     with col4:
-        nombres = st.text_input("Apellidos y Nombres")
-
+        nombres = st.text_input("Apellidos y Nombres", key="nombres")
     with col5:
         cargo = st.selectbox(
             "Cargo/Puesto",
             ["", "CT-Coordinador Territorial", "PRO-Promotor",
-             "ATE-Asistente Técnico", "Gestor de Acompaño", "Otro"]
+             "ATE-Asistente Técnico", "Gestor te Acompaño", "Otro"],
+            key="cargo"
         )
-
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ================= ACTIVIDADES =================
 titulo("Actividades")
-
 actividades = {
     "BIENESTAR": ["ACTIVO","VACACIONES","LICENCIA SINDICAL","EXAMEN MEDICO","LICENCIA MEDICA"],
-    "VISITAS": [
-        "VISITAS DOMICILIARIAS",
-        "BARRIDOS",
-        "VISITAS A EMPRENDIMIENTOS",
-        "VISITAS REMOTAS"
-    ],
-    "GABINETE": [
-        "REGISTRO DE DJ",
-        "ELABORACION DE INFORMES",
-        "SUPERVISION",
-        "ATENCION AL USUARIO"
-    ],
-    "REUNIONES": [
-        "REUNION EQUIPO UT",
-        "REUNION CON SALUD",
-        "REUNION CON GL"
-    ]
+    "VISITAS": ["VISITAS DOMICILIARIAS","BARRIDOS","VISITAS A EMPRENDIMIENTOS","VISITAS REMOTAS"],
+    "GABINETE": ["REGISTRO DE DJ","ELABORACION DE INFORMES","SUPERVISION","ATENCION AL USUARIO"],
+    "REUNIONES": ["REUNION EQUIPO UT","REUNION CON SALUD","REUNION CON GL"]
 }
-
 respuestas = {}
-
 for act, subs in actividades.items():
     st.markdown(f"**{act}**")
-    respuestas[act] = st.selectbox(
-        f"Subactividad de {act}",
-        [""] + subs,
-        key=act
-    )
+    respuestas[act] = st.selectbox(f"Subactividad de {act}", [""] + subs, key=act)
 
-otras_actividades = st.text_area("Otras actividades")
+otras_actividades = st.text_area("Otras actividades", key="otras_actividades")
 
-# ================= GUARDAR =================
-if st.button("💾 Guardar registro"):
-    if not ut or not codigo_usuario or not nombres or not cargo:
-        st.warning("⚠️ Complete todos los datos generales")
-    else:
-        filas = []
-        for act, sub in respuestas.items():
-            if sub:
-                filas.append([
-                    ut,
-                    fecha.strftime("%d/%m/%Y"),
-                    codigo_usuario,
-                    nombres,
-                    cargo,
-                    act,
-                    sub,
-                    otras_actividades
-                ])
+# ================= BOTONES GUARDAR Y NUEVO =================
+col_guardar, col_nuevo = st.columns([1,1])
 
-        if not filas:
-            st.warning("⚠️ No seleccionó actividades")
+with col_guardar:
+    if st.button("💾 Guardar registro"):
+        if not ut or not codigo_usuario or not nombres or not cargo:
+            st.warning("⚠️ Complete todos los datos generales")
         else:
-            sheet = conectar_sheet()
-            for fila in filas:
-                sheet.append_row(fila)
+            filas = []
+            for act, sub in respuestas.items():
+                if sub:
+                    filas.append([
+                        ut,
+                        fecha.strftime("%d/%m/%Y"),
+                        codigo_usuario,
+                        nombres,
+                        cargo,
+                        act,
+                        sub,
+                        otras_actividades
+                    ])
+            if not filas:
+                st.warning("⚠️ No seleccionó actividades")
+            else:
+                sheet = conectar_sheet()
+                for fila in filas:
+                    sheet.append_row(fila)
+                st.success(f"✅ Se guardaron {len(filas)} registros")
+                st.experimental_rerun()
 
-            st.success(f"✅ Se guardaron {len(filas)} registros")
-            st.experimental_rerun()
+with col_nuevo:
+    if st.button("➕ Nuevo registro"):
+        # Limpiar todos los campos del session_state
+        for key in ["ut","fecha","codigo_usuario","nombres","cargo"] + list(actividades.keys()) + ["otras_actividades"]:
+            if key in st.session_state:
+                del st.session_state[key]
+        st.experimental_rerun()
