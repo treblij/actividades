@@ -17,16 +17,46 @@ def conectar_sheet():
     client = gspread.authorize(creds)
     return client.open_by_key(SHEET_ID).sheet1
 
-# ================= LOGIN SIMPLE =================
+# ================= LOGIN MINIMALISTA =================
 USUARIOS = {
     "admin": "1234",
     "jrm": "jrm"
 }
 
 def login():
-    st.markdown("<h2 style='text-align:center;'>🔐 Ingreso al Sistema</h2>", unsafe_allow_html=True)
-    usuario = st.text_input("Usuario")
-    contrasena = st.text_input("Contraseña", type="password")
+
+    st.markdown("""
+    <style>
+    .login-card {
+        width: 320px;
+        margin: 120px auto;
+        padding: 30px;
+        border-radius: 14px;
+        background: white;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        text-align: center;
+    }
+    .login-card img {
+        width: 90px;
+        margin-bottom: 15px;
+    }
+    .login-title {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 20px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="login-card">
+        <img src="logo.png">
+        <div class="login-title">Ingreso al sistema</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    usuario = st.text_input("Usuario", key="login_user")
+    contrasena = st.text_input("Contraseña", type="password", key="login_pass")
 
     if st.button("Ingresar"):
         if USUARIOS.get(usuario) == contrasena:
@@ -161,7 +191,7 @@ if guardar:
         timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
         for act, sub in respuestas.items():
-            if sub:  # evita guardar vacíos
+            if sub:
                 sheet.append_row([
                     timestamp,
                     ut,
