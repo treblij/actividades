@@ -44,6 +44,12 @@ if not st.session_state.login:
     login()
     st.stop()
 
+# ================= LOGOUT =================
+col_logout, _ = st.columns([1, 6])
+if col_logout.button("🔓 Cerrar sesión"):
+    st.session_state.clear()
+    st.rerun()
+
 # ================= ESTILOS =================
 st.markdown("""
 <style>
@@ -82,7 +88,7 @@ actividades = {
 if "form_id" not in st.session_state:
     st.session_state.form_id = 0
 
-form_id = st.session_state.form_id  # variable local para claridad
+form_id = st.session_state.form_id
 
 # ================= FORMULARIO =================
 with st.form(key=f"form_{form_id}"):
@@ -104,14 +110,19 @@ with st.form(key=f"form_{form_id}"):
              "UT - LIMA METROPOLITANA Y CALLAO","UT - LIMA PROVINCIAS","UT - LORETO",
              "UT - MADRE DE DIOS","UT - MOQUEGUA","UT - PASCO","UT - PIURA",
              "UT - PUNO","UT - SAN MARTIN","UT - TACNA","UT - TUMBES","UT - UCAYALI"],
-             key=f"ut_{form_id}"
+            key=f"ut_{form_id}"
         )
 
     with col2:
-        fecha = st.date_input("Fecha", value=datetime.today(), max_value=datetime.today(), key=f"fecha_{form_id}")
+        fecha = st.date_input(
+            "Fecha",
+            value=datetime.today(),
+            max_value=datetime.today(),
+            key=f"fecha_{form_id}"
+        )
 
     with col3:
-        codigo_usuario = st.text_input("Código de Usuario", key=f"codigo_usuario_{form_id}")
+        codigo_usuario = st.text_input("Código de Usuario", key=f"codigo_{form_id}")
 
     with col4:
         nombres = st.text_input("Apellidos y Nombres", key=f"nombres_{form_id}")
@@ -121,7 +132,7 @@ with st.form(key=f"form_{form_id}"):
             "Cargo/Puesto",
             ["", "CT-Coordinador Territorial", "PRO-Promotor",
              "ATE-Asistente Técnico", "Gestor te Acompaño", "Otro"],
-             key=f"cargo_{form_id}"
+            key=f"cargo_{form_id}"
         )
 
     st.markdown("</div>", unsafe_allow_html=True)
@@ -130,9 +141,13 @@ with st.form(key=f"form_{form_id}"):
 
     respuestas = {}
     for act, subs in actividades.items():
-        respuestas[act] = st.selectbox(f"{act}", [""] + subs, key=f"{act}_{form_id}")
+        respuestas[act] = st.selectbox(
+            act,
+            [""] + subs,
+            key=f"{act}_{form_id}"
+        )
 
-    otras_actividades = st.text_area("Otras actividades", key=f"otras_actividades_{form_id}")
+    otras_actividades = st.text_area("Otras actividades", key=f"otras_{form_id}")
 
     colg1, colg2 = st.columns(2)
     guardar = colg1.form_submit_button("💾 Guardar registro")
@@ -144,9 +159,12 @@ if guardar:
         st.warning("⚠️ Complete todos los datos generales")
     else:
         sheet = conectar_sheet()
+        timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
         for act, sub in respuestas.items():
-            if sub:
+            if sub:  # evita guardar vacíos
                 sheet.append_row([
+                    timestamp,
                     ut,
                     fecha.strftime("%d/%m/%Y"),
                     codigo_usuario,
@@ -156,10 +174,11 @@ if guardar:
                     sub,
                     otras_actividades
                 ])
+
         st.success("✅ Registro guardado correctamente")
-        st.session_state.form_id += 1  # Incrementar form_id para limpiar formulario
-        st.experimental_rerun()
+        st.session_state.form_id += 1
+        st.rerun()
 
 if nuevo:
-    st.session_state.form_id += 1  # Incrementar form_id para limpiar formulario
-    st.experimental_rerun()
+    st.session_state.form_id += 1
+    st.rerun()
