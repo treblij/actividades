@@ -32,13 +32,29 @@ def obtener_usuarios():
         activo = fila.get("activo")  # puede estar vacío
         rol = fila.get("rol", "USER")
 
-        # Solo agregar si tiene info en 'activo' (no vacío)
         if usuario and contrasena and activo and activo.strip():
             usuarios[usuario] = {
                 "password": str(contrasena).strip(),
                 "rol": rol
             }
     return usuarios
+
+# ================= OBTENER DATOS PERSONALES =================
+def obtener_datos_personales():
+    client = conectar_sheet()
+    sheet = client.open_by_key(SHEET_ID).worksheet("DATOSPERSONALES")
+    data = sheet.get_all_records()
+
+    datos_ut = {}
+    for fila in data:
+        ut = fila.get("UT")
+        codigo = fila.get("CODIGO_SISOPE")
+        nombre = fila.get("NOMBRE")
+        if ut and ut.strip() and codigo and nombre:
+            if ut not in datos_ut:
+                datos_ut[ut] = []
+            datos_ut[ut].append({"codigo": codigo, "nombre": nombre})
+    return datos_ut
 
 # ================= LOGIN =================
 if "login" not in st.session_state:
@@ -106,13 +122,14 @@ if "form_id" not in st.session_state:
     st.session_state.form_id = 0
 
 form_id = st.session_state.form_id
+datos_ut = obtener_datos_personales()
 
 # ================= FORMULARIO =================
 with st.form(key=f"form_{form_id}"):
 
     st.title("📋 Ficha de Registro de Actividades UT")
-
     titulo("Datos Generales")
+
     st.markdown("<div style='background:white;padding:20px;border-radius:12px;box-shadow:0 3px 8px rgba(0,0,0,0.1);margin-bottom:25px'>", unsafe_allow_html=True)
 
     col1, col2, col3, col4, col5 = st.columns(5)
@@ -120,11 +137,7 @@ with st.form(key=f"form_{form_id}"):
     with col1:
         ut = st.selectbox(
             "UT",
-            ["",
-             "U.T. AMAZONAS","U.T. ANCASH","U.T. APURIMAC","U.T. AREQUIPA","U.T. AYACUCHO","U.T. CAJAMARCA","U.T. CUSCO",
-             "U.T. HUANCAVELICA","U.T. HUANUCO","U.T. ICA","U.T. JUNIN","U.T. LA LIBERTAD","U.T. LAMBAYEQUE",
-             "U.T. LIMA METROPOLITANA Y CALLAO","U.T. LIMA PROVINCIAS","U.T. LORETO","U.T. MADRE DE DIOS","U.T. MOQUEGUA",
-             "U.T. PASCO","U.T. PIURA","U.T. PUNO","U.T. SAN MARTIN","U.T. TACNA","U.T. TUMBES","U.T. UCAYALI"],
+            [""] + list(datos_ut.keys()),
             key=f"ut_{form_id}"
         )
 
@@ -136,10 +149,23 @@ with st.form(key=f"form_{form_id}"):
         )
 
     with col3:
-        codigo_usuario = st.text_input("Código de Usuario", key=f"codigo_{form_id}")
+        codigos_disponibles = []
+        if ut:
+            codigos_disponibles = [d["codigo"] for d in datos_ut[ut]]
+        codigo_usuario = st.selectbox(
+            "Código de Usuario",
+            [""] + codigos_disponibles,
+            key=f"codigo_{form_id}"
+        )
 
     with col4:
-        nombres = st.text_input("Apellidos y Nombres", key=f"nombres_{form_id}")
+        nombre_automatico = ""
+        if ut and codigo_usuario:
+            for d in datos_ut[ut]:
+                if d["codigo"] == codigo_usuario:
+                    nombre_automatico = d["nombre"]
+                    break
+        nombres = st.text_input("Apellidos y Nombres", value=nombre_automatico, key=f"nombres_{form_id}")
 
     with col5:
         cargo = st.selectbox(
@@ -153,7 +179,6 @@ with st.form(key=f"form_{form_id}"):
     st.markdown("</div>", unsafe_allow_html=True)
 
     titulo("Actividades")
-
     respuestas = {}
     for act, subs in actividades.items():
         respuestas[act] = st.selectbox(act, [""] + subs, key=f"{act}_{form_id}")
@@ -174,7 +199,6 @@ if guardar:
 
         timestamp = datetime.now(ZONA_PERU).strftime("%d/%m/%Y %H:%M:%S")
 
-        # FORZAR MAYÚSCULAS
         nombres_mayus = nombres.strip().upper()
         otras_mayus = otras_actividades.strip().upper()
 
