@@ -80,7 +80,7 @@ if not st.session_state.login:
 col_logout, _ = st.columns([1, 6])
 if col_logout.button("🔓 Cerrar sesión"):
     st.session_state.clear()
-    st.experimental_rerun()  # Este sigue siendo válido para cerrar sesión
+    st.experimental_rerun()  # Para cerrar sesión
 
 # ================= FUNCIONES =================
 def titulo(texto):
@@ -163,7 +163,8 @@ with st.form(key=f"form_{form_id}"):
 
     respuestas = {}
     for act, subs in actividades.items():
-        respuestas[act] = st.selectbox(act, [""] + subs, key=f"{act}_{form_id}")
+        # Cambiado a MULTISELECT
+        respuestas[act] = st.multiselect(f"{act}", subs, key=f"{act}_{form_id}")
 
     otras_actividades = st.text_area("Otras actividades", key=f"otras_{form_id}")
 
@@ -173,9 +174,8 @@ with st.form(key=f"form_{form_id}"):
 
 # ================= ACCIONES =================
 def reiniciar_formulario():
-    # Incrementar form_id
     st.session_state.form_id += 1
-    # Limpiar todos los campos relacionados
+    # Limpiar campos del formulario
     keys_a_borrar = [k for k in st.session_state.keys() if k.startswith((
         "ut_", "fecha_", "codigo_", "nombres_", "cargo_",
         "BIENESTAR", "VISITAS", "PAGO RBU", "MUNICIPALIDAD", "GABINETE", "CAMPAÑAS", "REUNIONES", "otras_"
@@ -199,8 +199,9 @@ if guardar:
         otras_mayus = (otras_actividades or "").strip().upper()
 
         filas = []
-        for act, sub in respuestas.items():
-            if sub:
+        # Guardar múltiples sub-actividades por actividad
+        for act, subs_seleccionadas in respuestas.items():
+            for sub in subs_seleccionadas:
                 filas.append([
                     timestamp,
                     ut or "",
