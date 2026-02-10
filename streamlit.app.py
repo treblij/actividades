@@ -20,7 +20,7 @@ def conectar_sheet():
 # ================= LOGIN SIMPLE =================
 USUARIOS = {
     "admin": "1234",
-    "usuario1": "abcd"
+    "jrm": "jrm"
 }
 
 def login():
@@ -117,7 +117,6 @@ with st.form(key=f"form_{form_id}"):
         fecha = st.date_input(
             "Fecha",
             value=datetime.today(),
-            max_value=datetime.today(),
             key=f"fecha_{form_id}"
         )
 
