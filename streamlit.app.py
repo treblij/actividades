@@ -17,16 +17,11 @@ def conectar_sheet():
     return client.open_by_key(SHEET_ID).sheet1
 
 # ================= USUARIOS =================
-USUARIOS = {
-    "admin": "1234",
-    "usuario1": "abcd"
-}
+USUARIOS = {"admin": "1234", "usuario1": "abcd"}
 
 # ================= SESIÓN =================
 if "login" not in st.session_state:
     st.session_state.login = False
-if "login_flag" not in st.session_state:
-    st.session_state.login_flag = False
 if "form_id" not in st.session_state:
     st.session_state.form_id = 0
 
@@ -37,7 +32,7 @@ def login():
         <style>
         .login-container {
             max-width: 350px;
-            margin: 50px auto;
+            margin: 100px auto;
             padding: 25px;
             border-radius: 12px;
             box-shadow: 0 3px 15px rgba(0,0,0,0.2);
@@ -63,7 +58,7 @@ def login():
         if USUARIOS.get(usuario) == contrasena:
             st.session_state.login = True
             st.session_state.usuario = usuario
-            st.session_state.login_flag = True  # flag temporal para rerun
+            st.experimental_rerun()  # Esta llamada es segura aquí, fuera de forms
         else:
             st.error("Usuario o contraseña incorrectos ❌")
 
@@ -72,12 +67,7 @@ def login():
 # ================= LÓGICA LOGIN =================
 if not st.session_state.login:
     login()
-    # Este rerun solo se hace en el flujo principal, nunca dentro de la función
-    if st.session_state.login_flag:
-        st.session_state.login_flag = False
-        st.experimental_rerun()
-    else:
-        st.stop()
+    st.stop()  # No ejecutar nada más hasta logueo exitoso
 
 # ================= ESTILOS =================
 st.markdown("""
@@ -107,10 +97,10 @@ def titulo(texto):
 
 # ================= ACTIVIDADES =================
 actividades = {
-    "BIENESTAR": ["ACTIVO", "VACACIONES", "LICENCIA SINDICAL", "EXAMEN MEDICO", "LICENCIA MEDICA"],
-    "VISITAS": ["VISITAS DOMICILIARIAS", "BARRIDOS", "VISITAS A EMPRENDIMIENTOS", "VISITAS REMOTAS"],
-    "GABINETE": ["REGISTRO DE DJ", "ELABORACION DE INFORMES", "SUPERVISION", "ATENCION AL USUARIO"],
-    "REUNIONES": ["REUNION EQUIPO UT", "REUNION CON SALUD", "REUNION CON GL"]
+    "BIENESTAR": ["ACTIVO","VACACIONES","LICENCIA SINDICAL","EXAMEN MEDICO","LICENCIA MEDICA"],
+    "VISITAS": ["VISITAS DOMICILIARIAS","BARRIDOS","VISITAS A EMPRENDIMIENTOS","VISITAS REMOTAS"],
+    "GABINETE": ["REGISTRO DE DJ","ELABORACION DE INFORMES","SUPERVISION","ATENCION AL USUARIO"],
+    "REUNIONES": ["REUNION EQUIPO UT","REUNION CON SALUD","REUNION CON GL"]
 }
 
 # ================= FORMULARIO =================
@@ -121,6 +111,7 @@ def limpiar_formulario():
             del st.session_state[key]
 
 with st.form(key=f"form_{st.session_state.form_id}"):
+
     st.title(f"Bienvenido {st.session_state.usuario} ✅")
     st.markdown("<h3>📋 Ficha de Registro de Actividades UT</h3>", unsafe_allow_html=True)
 
