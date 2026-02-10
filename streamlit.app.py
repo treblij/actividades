@@ -5,7 +5,6 @@ from datetime import datetime
 
 # ================= CONFIGURACIÓN =================
 SHEET_ID = "1BihXG87fSsYxt2Ail1v805xwTStyL_4JOWbDPUp9ics"
-
 st.set_page_config(page_title="Ficha de Actividades UT", layout="wide")
 
 # ================= CONEXIÓN GOOGLE SHEETS =================
@@ -26,8 +25,8 @@ USUARIOS = {
 # ================= SESIÓN =================
 if "login" not in st.session_state:
     st.session_state.login = False
-if "login_success" not in st.session_state:
-    st.session_state.login_success = False
+if "login_flag" not in st.session_state:
+    st.session_state.login_flag = False
 if "form_id" not in st.session_state:
     st.session_state.form_id = 0
 
@@ -58,17 +57,13 @@ def login():
     st.markdown('<div class="login-container">', unsafe_allow_html=True)
     st.markdown('<div class="login-title">🔐 Ingreso al Sistema</div>', unsafe_allow_html=True)
 
-    with st.form(key="login_form"):
-        usuario = st.text_input("Usuario")
-        contrasena = st.text_input("Contraseña", type="password")
-        ingresar = st.form_submit_button("Ingresar")
-
-    if ingresar:
+    usuario = st.text_input("Usuario", key="login_user")
+    contrasena = st.text_input("Contraseña", type="password", key="login_pass")
+    if st.button("Ingresar"):
         if USUARIOS.get(usuario) == contrasena:
             st.session_state.login = True
             st.session_state.usuario = usuario
-            st.session_state.form_id = 0
-            st.session_state.login_success = True  # flag temporal
+            st.session_state.login_flag = True  # flag temporal para rerun
         else:
             st.error("Usuario o contraseña incorrectos ❌")
 
@@ -77,9 +72,9 @@ def login():
 # ================= LÓGICA LOGIN =================
 if not st.session_state.login:
     login()
-    # fuera de la función, hacemos rerun seguro si login fue exitoso
-    if st.session_state.login_success:
-        st.session_state.login_success = False
+    # Este rerun solo se hace en el flujo principal, nunca dentro de la función
+    if st.session_state.login_flag:
+        st.session_state.login_flag = False
         st.experimental_rerun()
     else:
         st.stop()
@@ -120,20 +115,19 @@ actividades = {
 
 # ================= FORMULARIO =================
 def limpiar_formulario():
-    keys_a_borrar = ["ut", "fecha", "codigo_usuario", "nombres", "cargo", "otras_actividades"] + list(actividades.keys())
+    keys_a_borrar = ["ut","fecha","codigo_usuario","nombres","cargo","otras_actividades"] + list(actividades.keys())
     for key in keys_a_borrar:
         if key in st.session_state:
             del st.session_state[key]
 
 with st.form(key=f"form_{st.session_state.form_id}"):
-
     st.title(f"Bienvenido {st.session_state.usuario} ✅")
     st.markdown("<h3>📋 Ficha de Registro de Actividades UT</h3>", unsafe_allow_html=True)
 
     # Datos generales
     titulo("Datos Generales")
     st.markdown("<div class='tarjeta'>", unsafe_allow_html=True)
-    col1, col2, col3, col4, col5 = st.columns(5)
+    col1,col2,col3,col4,col5 = st.columns(5)
     with col1:
         ut = st.selectbox("UT", ["","UT - AMAZONAS","UT - ANCASH","UT - APURIMAC","UT - AREQUIPA",
                                  "UT - AYACUCHO","UT - CUSCO","UT - HUANCAVELICA","UT - HUANUCO",
@@ -148,18 +142,18 @@ with st.form(key=f"form_{st.session_state.form_id}"):
     with col4:
         nombres = st.text_input("Apellidos y Nombres", key="nombres")
     with col5:
-        cargo = st.selectbox("Cargo/Puesto", ["","CT-Coordinador Territorial","PRO-Promotor","ATE-Asistente Técnico","Gestor te Acompaño","Otro"], key="cargo")
+        cargo = st.selectbox("Cargo/Puesto", ["","CT-Coordinador Territorial","PRO-Promotor",
+                                             "ATE-Asistente Técnico","Gestor te Acompaño","Otro"], key="cargo")
     st.markdown("</div>", unsafe_allow_html=True)
 
     # Actividades
     titulo("Actividades")
     respuestas = {}
     for act, subs in actividades.items():
-        respuestas[act] = st.selectbox(f"{act}", [""] + subs, key=act)
+        respuestas[act] = st.selectbox(f"{act}", [""]+subs, key=act)
     otras_actividades = st.text_area("Otras actividades", key="otras_actividades")
 
-    # Botones
-    colb1, colb2 = st.columns(2)
+    colb1,colb2 = st.columns(2)
     guardar = colb1.form_submit_button("💾 Guardar registro")
     nuevo = colb2.form_submit_button("🆕 Nuevo registro")
 
@@ -171,16 +165,7 @@ if guardar:
         sheet = conectar_sheet()
         for act, sub in respuestas.items():
             if sub:
-                sheet.append_row([
-                    ut,
-                    fecha.strftime("%d/%m/%Y"),
-                    codigo_usuario,
-                    nombres,
-                    cargo,
-                    act,
-                    sub,
-                    otras_actividades
-                ])
+                sheet.append_row([ut, fecha.strftime("%d/%m/%Y"), codigo_usuario, nombres, cargo, act, sub, otras_actividades])
         st.success("✅ Registro guardado correctamente")
         limpiar_formulario()
         st.session_state.form_id += 1
