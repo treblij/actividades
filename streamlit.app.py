@@ -2,9 +2,11 @@ import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
+import pytz
 
 # ================= CONFIGURACIÓN =================
 SHEET_ID = "1BihXG87fSsYxt2Ail1v805xwTStyL_4JOWbDPUp9ics"
+ZONA_PERU = pytz.timezone("America/Lima")
 
 st.set_page_config(page_title="Ficha de Actividades UT", layout="wide")
 
@@ -72,7 +74,6 @@ def login():
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Mostrar login si no ha iniciado sesión
 if not st.session_state.login:
     login()
     st.stop()
@@ -81,7 +82,7 @@ if not st.session_state.login:
 col_logout, _ = st.columns([1, 6])
 if col_logout.button("🔓 Cerrar sesión"):
     st.session_state.clear()
-    st.experimental_rerun()  # Este es seguro porque es dentro de callback de botón
+    st.experimental_rerun()
 
 # ================= FUNCIONES =================
 def titulo(texto):
@@ -89,70 +90,36 @@ def titulo(texto):
 
 # ================= ACTIVIDADES =================
 actividades = {
-    "BIENESTAR": [
-        "VACACIONES",
-        "LICENCIA SINDICAL",
-        "EXAMEN MEDICO",
-        "LICENCIA MEDICA",
-        "ACTIVO"
-    ],
+    "BIENESTAR": ["VACACIONES","LICENCIA SINDICAL","EXAMEN MEDICO","LICENCIA MEDICA","ACTIVO"],
     "VISITAS": [
-        "VISITAS DOMICILIARIAS A USUARIOS REGULARES",
-        "BARRIDOS",
-        "VISITAS A USUARIOS CON EMPRENDIMIENTOS",
-        "VISITAS A TERCEROS AUTORIZADOS",
-        "VISITAS DE CONVOCATORIA DE TE ACOMPAÑO",
-        "CONVOCATORIA PARA CAMPAÑAS",
+        "VISITAS DOMICILIARIAS A USUARIOS REGULARES","BARRIDOS",
+        "VISITAS A USUARIOS CON EMPRENDIMIENTOS","VISITAS A TERCEROS AUTORIZADOS",
+        "VISITAS DE CONVOCATORIA DE TE ACOMPAÑO","CONVOCATORIA PARA CAMPAÑAS",
         "VISITAS REMOTAS"
     ],
-
-    "PAGO RBU": [
-        "SUPERVISION Y ACOMPAÑAMIENTO DEL PAGO",
-        "TARJETIZACION",
-        "SUPERVISION ETV"
-    ],
-
-    "MUNICIPALIDAD": [
-        "ATENCION EN ULE",
-        "PARTICIPACION EN IAL"
-    ],
-
+    "PAGO RBU": ["SUPERVISION Y ACOMPAÑAMIENTO DEL PAGO","TARJETIZACION","SUPERVISION ETV"],
+    "MUNICIPALIDAD": ["ATENCION EN ULE","PARTICIPACION EN IAL"],
     "GABINETE": [
-        "REGISTRO DE DJ",
-        "ELABORACION DE INFORMES, PRIORIZACIONES Y OTROS",
-        "GABINETE TE ACOMPAÑO",
-        "MAPEO DE USUARIOS",
-        "SUPERVISION DE PROMOTORES",
-        "APOYO UT",
-        "REGISTRO DE EMPRENDIMIENTOS",
-        "REGISTRO DE DONACIONES",
-        "DESPLAZAMIENTO A COMISIONES",
-        "ATENCION AL USUARIO Y TRAMITES",
+        "REGISTRO DE DJ","ELABORACION DE INFORMES, PRIORIZACIONES Y OTROS",
+        "GABINETE TE ACOMPAÑO","MAPEO DE USUARIOS","SUPERVISION DE PROMOTORES",
+        "APOYO UT","REGISTRO DE EMPRENDIMIENTOS","REGISTRO DE DONACIONES",
+        "DESPLAZAMIENTO A COMISIONES","ATENCION AL USUARIO Y TRAMITES",
         "ASISTENCIA Y CAPACITACION A ACTORES EXTERNOS",
-        "CAPACITACIONES AL PERSONAL",
-        "REGISTRO DE SABERES",
+        "CAPACITACIONES AL PERSONAL","REGISTRO DE SABERES",
         "ASISTENCIA TECNICA SABERES PRODUCTIVOS"
     ],
-
     "CAMPAÑAS": [
-        "PARTICIPACION EN EMERGENCIAS (INCENDIOS)",
-        "AVANZADA PARA CAMPAÑAS",
+        "PARTICIPACION EN EMERGENCIAS (INCENDIOS)","AVANZADA PARA CAMPAÑAS",
         "PARTICIPACION EN CAMPAÑAS DE ENTREGA DE DONACIONES",
-        "PARTICIPACION EN TE ACOMPAÑO",
-        "DIALOGOS DE SABERES",
-        "ENCUENTROS DE SABERES PRODUCTIVOS",
-        "TRANSMISION INTER GENERACIONAL",
+        "PARTICIPACION EN TE ACOMPAÑO","DIALOGOS DE SABERES",
+        "ENCUENTROS DE SABERES PRODUCTIVOS","TRANSMISION INTER GENERACIONAL",
         "FERIAS DE EMPRENDIMIENTOS"
     ],
-
     "REUNIONES": [
-        "REUNION EQUIPO UT",
-        "REUNION CON SECTOR SALUD DIRESA, RIS, IPRESS",
-        "REUNION SABERES",
-        "REUNION CON GL"
+        "REUNION EQUIPO UT","REUNION CON SECTOR SALUD DIRESA, RIS, IPRESS",
+        "REUNION SABERES","REUNION CON GL"
     ]
 }
-
 
 # ================= FORM ID =================
 if "form_id" not in st.session_state:
@@ -186,7 +153,7 @@ with st.form(key=f"form_{form_id}"):
     with col2:
         fecha = st.date_input(
             "Fecha",
-            value=datetime.today(),
+            value=datetime.now(ZONA_PERU).date(),
             key=f"fecha_{form_id}"
         )
 
@@ -210,11 +177,7 @@ with st.form(key=f"form_{form_id}"):
 
     respuestas = {}
     for act, subs in actividades.items():
-        respuestas[act] = st.selectbox(
-            act,
-            [""] + subs,
-            key=f"{act}_{form_id}"
-        )
+        respuestas[act] = st.selectbox(act, [""] + subs, key=f"{act}_{form_id}")
 
     otras_actividades = st.text_area("Otras actividades", key=f"otras_{form_id}")
 
@@ -228,7 +191,13 @@ if guardar:
         st.warning("⚠️ Complete todos los datos generales")
     else:
         sheet = conectar_sheet()
-        timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
+        timestamp = datetime.now(ZONA_PERU).strftime("%d/%m/%Y %H:%M:%S")
+
+        # FORZAR MAYÚSCULAS
+        nombres_mayus = nombres.strip().upper()
+        otras_mayus = otras_actividades.strip().upper()
+
         for act, sub in respuestas.items():
             if sub:
                 sheet.append_row([
@@ -236,16 +205,17 @@ if guardar:
                     ut,
                     fecha.strftime("%d/%m/%Y"),
                     codigo_usuario,
-                    nombres,
+                    nombres_mayus,
                     cargo,
                     act,
                     sub,
-                    otras_actividades
+                    otras_mayus
                 ])
+
         st.success("✅ Registro guardado correctamente")
         st.session_state.form_id += 1
-        st.experimental_rerun()  # Seguro dentro del botón del form
+        st.experimental_rerun()
 
 if nuevo:
     st.session_state.form_id += 1
-    st.experimental_rerun()  # Seguro dentro del botón del form
+    st.experimental_rerun()
