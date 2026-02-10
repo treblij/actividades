@@ -20,30 +20,6 @@ def conectar_sheet():
 # ================= ESTILOS =================
 st.markdown("""
 <style>
-/* Login personalizado */
-.login-container {
-    background-color: #f0f8ff;
-    padding: 25px;
-    border-radius: 15px;
-    max-width: 400px;
-    margin: 0 auto;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
-.stTextInput>div>div>input {
-    background-color: #e6f2ff !important;
-    border-radius: 8px !important;
-    border: 1px solid #1f77b4 !important;
-    padding: 8px !important;
-}
-.stButton>button {
-    background-color: #1f77b4;
-    color: white;
-    border-radius: 8px;
-    padding: 0.5rem 1rem;
-}
-.stButton>button:hover {
-    background-color: #4fa3d1;
-}
 .cinta {
     background: linear-gradient(90deg, #1f77b4, #4fa3d1);
     padding: 10px;
@@ -61,6 +37,11 @@ st.markdown("""
     box-shadow: 0 3px 8px rgba(0,0,0,0.1);
     margin-bottom: 25px;
 }
+.login-container {
+    max-width: 400px;
+    margin: 0 auto 40px auto;
+    text-align: center;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -71,13 +52,15 @@ USUARIOS = {
 }
 
 def login():
+    # Contenedor centrado para el login
     st.markdown('<div class="login-container">', unsafe_allow_html=True)
-    
-    # Logo y título centrados, con st.image para evitar problemas de carga
-    st.markdown('<div style="text-align: center;">', unsafe_allow_html=True)
+
+    # Logo centrado arriba
     st.image("logo.png", width=150)
-    st.markdown('<h2>🔐 Ingreso al Sistema</h2></div>', unsafe_allow_html=True)
-    
+
+    # Título centrado
+    st.markdown("<h2>🔐 Ingreso al Sistema</h2>", unsafe_allow_html=True)
+
     usuario = st.text_input("Usuario")
     contrasena = st.text_input("Contraseña", type="password")
 
@@ -86,11 +69,11 @@ def login():
             st.session_state.login = True
             st.session_state.usuario = usuario
             st.session_state.form_id = 0
-            st.rerun()
+            st.experimental_rerun()
         else:
             st.error("Usuario o contraseña incorrectos ❌")
-    
-    st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 if "login" not in st.session_state:
     st.session_state.login = False
@@ -103,7 +86,7 @@ if not st.session_state.login:
 col_logout, _ = st.columns([1, 6])
 if col_logout.button("🔓 Cerrar sesión"):
     st.session_state.clear()
-    st.rerun()
+    st.experimental_rerun()
 
 # ================= FUNCIONES =================
 def titulo(texto):
@@ -209,8 +192,8 @@ if guardar:
 
         st.success("✅ Registro guardado correctamente")
         st.session_state.form_id += 1
-        st.rerun()
+        st.experimental_rerun()
 
 if nuevo:
     st.session_state.form_id += 1
-    st.rerun()
+    st.experimental_rerun()
