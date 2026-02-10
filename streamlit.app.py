@@ -73,13 +73,10 @@ USUARIOS = {
 def login():
     st.markdown('<div class="login-container">', unsafe_allow_html=True)
     
-    # Logo y título centrados
-    st.markdown("""
-    <div style="text-align: center;">
-        <img src="logo.png" width="150">
-        <h2>🔐 Ingreso al Sistema</h2>
-    </div>
-    """, unsafe_allow_html=True)
+    # Logo y título centrados, con st.image para evitar problemas de carga
+    st.markdown('<div style="text-align: center;">', unsafe_allow_html=True)
+    st.image("logo.png", width=150)
+    st.markdown('<h2>🔐 Ingreso al Sistema</h2></div>', unsafe_allow_html=True)
     
     usuario = st.text_input("Usuario")
     contrasena = st.text_input("Contraseña", type="password")
