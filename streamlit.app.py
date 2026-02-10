@@ -19,51 +19,56 @@ def conectar_sheet():
     client = gspread.authorize(creds)
     return client
 
-# ================= OBTENER USUARIOS =================
+# ================= FUNCIONES =================
+def titulo(texto):
+    st.markdown(f"<div class='cinta'>{texto}</div>", unsafe_allow_html=True)
+
+# ================= ESTILOS =================
+st.markdown("""
+<style>
+.cinta {
+    background: linear-gradient(90deg, #1f77b4, #4fa3d1);
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 22px;
+    font-weight: bold;
+    color: white;
+    text-align: center;
+    margin: 20px 0;
+}
+.tarjeta {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+    margin-bottom: 25px;
+}
+.login-container {
+    max-width: 400px;
+    margin: 0 auto 40px auto;
+    text-align: center;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ================= LOGIN =================
 def obtener_usuarios():
     client = conectar_sheet()
     sheet = client.open_by_key(SHEET_ID).worksheet("USUARIOS")
-    data = sheet.get_all_records()
-
+    datos = sheet.get_all_records()
     usuarios = {}
-    for fila in data:
-        usuario = fila.get("usuario")
-        contrasena = fila.get("password_hash")
-        activo = fila.get("activo")  # puede estar vacío
-        rol = fila.get("rol", "USER")
-
-        if usuario and contrasena and activo and activo.strip():
-            usuarios[usuario] = {
-                "password": str(contrasena).strip(),
-                "rol": rol
-            }
+    for fila in datos:
+        if fila["activo"].strip().upper() == "SI":
+            usuarios[fila["usuario"]] = fila["password"]
     return usuarios
-
-# ================= OBTENER DATOS PERSONALES =================
-def obtener_datos_personales():
-    client = conectar_sheet()
-    sheet = client.open_by_key(SHEET_ID).worksheet("DATOSPERSONALES")
-    data = sheet.get_all_records()
-
-    datos_ut = {}
-    for fila in data:
-        ut = fila.get("UT")
-        codigo = fila.get("CODIGO_SISOPE")
-        nombre = fila.get("NOMBRE")
-        if ut and ut.strip() and codigo and nombre:
-            if ut not in datos_ut:
-                datos_ut[ut] = []
-            datos_ut[ut].append({"codigo": codigo, "nombre": nombre})
-    return datos_ut
-
-# ================= LOGIN =================
-if "login" not in st.session_state:
-    st.session_state.login = False
 
 usuarios = obtener_usuarios()
 
+if "login" not in st.session_state:
+    st.session_state.login = False
+
 def login():
-    st.markdown('<div style="max-width:400px;margin:0 auto;text-align:center">', unsafe_allow_html=True)
+    st.markdown('<div class="login-container">', unsafe_allow_html=True)
     st.image("logo.png", width=150)
     st.markdown("<h2>🔐 Ingreso al Sistema</h2>", unsafe_allow_html=True)
 
@@ -71,14 +76,12 @@ def login():
     contrasena = st.text_input("Contraseña", type="password")
 
     if st.button("Ingresar"):
-        if usuario in usuarios and usuarios[usuario]["password"] == contrasena:
+        if usuarios.get(usuario) == contrasena:
             st.session_state.login = True
             st.session_state.usuario = usuario
             st.session_state.form_id = 0
-            st.success(f"Bienvenido {usuario}!")
         else:
             st.error("Usuario o contraseña incorrectos ❌")
-
     st.markdown('</div>', unsafe_allow_html=True)
 
 if not st.session_state.login:
@@ -91,93 +94,106 @@ if col_logout.button("🔓 Cerrar sesión"):
     st.session_state.clear()
     st.experimental_rerun()
 
-# ================= FUNCIONES =================
-def titulo(texto):
-    st.markdown(f"""
-    <div style="
-        background: linear-gradient(90deg, #1f77b4, #4fa3d1);
-        padding: 10px;
-        border-radius: 8px;
-        font-size: 22px;
-        font-weight: bold;
-        color: white;
-        text-align: center;
-        margin: 20px 0;
-    ">{texto}</div>
-    """, unsafe_allow_html=True)
-
 # ================= ACTIVIDADES =================
 actividades = {
-    "BIENESTAR": ["VACACIONES","ACTIVO","LICENCIA SINDICAL","EXAMEN MEDICO OCUPACIONAL","LICENCIA MEDICA","ONOMASTICO","DESCANSO FISICO POR COMPENSACION"],
-    "VISITAS": ["VISITAS DOMICILIARIAS A USUARIOS REGULARES","BARRIDOS","VISITAS A USUARIOS CON EMPRENDIMIENTOS","VISITAS A TERCEROS AUTORIZADOS","VISITAS DE CONVOCATORIA DE TE ACOMPAÑO","CONVOCATORIA PARA CAMPAÑAS","VISITAS REMOTAS"],
+    "BIENESTAR": ["VACACIONES","ACTIVO","LICENCIA SINDICAL","EXAMEN MEDICO OCUPACIONAL",
+                  "LICENCIA MEDICA","ONOMASTICO","DESCANSO FISICO POR COMPENSACION"],
+    "VISITAS": ["VISITAS DOMICILIARIAS A USUARIOS REGULARES","BARRIDOS",
+                "VISITAS A USUARIOS CON EMPRENDIMIENTOS","VISITAS A TERCEROS AUTORIZADOS",
+                "VISITAS DE CONVOCATORIA DE TE ACOMPAÑO","CONVOCATORIA PARA CAMPAÑAS",
+                "VISITAS REMOTAS"],
     "PAGO RBU": ["SUPERVISION Y ACOMPAÑAMIENTO DEL PAGO","TARJETIZACION","SUPERVISION ETV"],
     "MUNICIPALIDAD": ["ATENCION EN ULE","PARTICIPACION EN IAL"],
-    "GABINETE": ["REGISTRO DE DJ","ELABORACION DE INFORMES, PRIORIZACIONES Y OTROS","GABINETE TE ACOMPAÑO","MAPEO DE USUARIOS","SUPERVISION DE PROMOTORES","APOYO UT","REGISTRO DE EMPRENDIMIENTOS","REGISTRO DE DONACIONES","DESPLAZAMIENTO A COMISIONES","ATENCION AL USUARIO Y TRAMITES","ASISTENCIA Y CAPACITACION A ACTORES EXTERNOS","CAPACITACIONES AL PERSONAL","REGISTRO DE SABERES","ASISTENCIA TECNICA SABERES PRODUCTIVOS"],
-    "CAMPAÑAS": ["PARTICIPACION EN EMERGENCIAS (INCENDIOS)","AVANZADA PARA CAMPAÑAS","PARTICIPACION EN CAMPAÑAS DE ENTREGA DE DONACIONES","PARTICIPACION EN TE ACOMPAÑO","DIALOGOS DE SABERES","ENCUENTROS DE SABERES PRODUCTIVOS","TRANSMISION INTER GENERACIONAL","FERIAS DE EMPRENDIMIENTOS"],
-    "REUNIONES": ["REUNION EQUIPO UT","REUNION CON SECTOR SALUD DIRESA, RIS, IPRESS","REUNION SABERES","REUNION CON GL"]
+    "GABINETE": ["REGISTRO DE DJ","ELABORACION DE INFORMES, PRIORIZACIONES Y OTROS",
+                 "GABINETE TE ACOMPAÑO","MAPEO DE USUARIOS","SUPERVISION DE PROMOTORES",
+                 "APOYO UT","REGISTRO DE EMPRENDIMIENTOS","REGISTRO DE DONACIONES",
+                 "DESPLAZAMIENTO A COMISIONES","ATENCION AL USUARIO Y TRAMITES",
+                 "ASISTENCIA Y CAPACITACION A ACTORES EXTERNOS",
+                 "CAPACITACIONES AL PERSONAL","REGISTRO DE SABERES",
+                 "ASISTENCIA TECNICA SABERES PRODUCTIVOS"],
+    "CAMPAÑAS": ["PARTICIPACION EN EMERGENCIAS (INCENDIOS)","AVANZADA PARA CAMPAÑAS",
+                 "PARTICIPACION EN CAMPAÑAS DE ENTREGA DE DONACIONES",
+                 "PARTICIPACION EN TE ACOMPAÑO","DIALOGOS DE SABERES",
+                 "ENCUENTROS DE SABERES PRODUCTIVOS","TRANSMISION INTER GENERACIONAL",
+                 "FERIAS DE EMPRENDIMIENTOS"],
+    "REUNIONES": ["REUNION EQUIPO UT","REUNION CON SECTOR SALUD DIRESA, RIS, IPRESS",
+                  "REUNION SABERES","REUNION CON GL"]
 }
 
 # ================= FORM ID =================
 if "form_id" not in st.session_state:
     st.session_state.form_id = 0
-
 form_id = st.session_state.form_id
+
+# ================= DATOS PERSONALES =================
+def obtener_datos_personales():
+    client = conectar_sheet()
+    sheet = client.open_by_key(SHEET_ID).worksheet("DATOSPERSONALES")
+    datos = sheet.get_all_records()
+    datos_ut = {}
+    for fila in datos:
+        if fila["UT"].strip():  # ignorar UT vacíos
+            ut = fila["UT"].strip()
+            if ut not in datos_ut:
+                datos_ut[ut] = []
+            datos_ut[ut].append({
+                "codigo": fila["CODIGO_SISOPE"].strip(),
+                "nombre": fila["NOMBRE"].strip()
+            })
+    return datos_ut
+
 datos_ut = obtener_datos_personales()
 
 # ================= FORMULARIO =================
 with st.form(key=f"form_{form_id}"):
-
     st.title("📋 Ficha de Registro de Actividades UT")
+
+    # --- DATOS GENERALES ---
     titulo("Datos Generales")
-
-    st.markdown("<div style='background:white;padding:20px;border-radius:12px;box-shadow:0 3px 8px rgba(0,0,0,0.1);margin-bottom:25px'>", unsafe_allow_html=True)
-
+    st.markdown("<div class='tarjeta'>", unsafe_allow_html=True)
     col1, col2, col3, col4, col5 = st.columns(5)
 
+    # Lista fija de UTs
+    ut_lista = ["", "U.T. AMAZONAS","UT - ANCASH","UT - APURIMAC","UT - AREQUIPA",
+                "UT - AYACUCHO","UT - CUSCO","UT - HUANCAVELICA","UT - HUANUCO",
+                "UT - ICA","UT - JUNIN","UT - LA LIBERTAD","UT - LAMBAYEQUE",
+                "UT - LIMA METROPOLITANA Y CALLAO","UT - LIMA PROVINCIAS","UT - LORETO",
+                "UT - MADRE DE DIOS","UT - MOQUEGUA","UT - PASCO","UT - PIURA",
+                "UT - PUNO","UT - SAN MARTIN","UT - TACNA","UT - TUMBES","UT - UCAYALI"]
+
     with col1:
-        ut = st.selectbox(
-            "UT",
-            [""] + list(datos_ut.keys()),
-            key=f"ut_{form_id}"
-        )
+        ut = st.selectbox("UT", ut_lista, key=f"ut_{form_id}")
 
     with col2:
-        fecha = st.date_input(
-            "Fecha",
-            value=datetime.now(ZONA_PERU).date(),
-            key=f"fecha_{form_id}"
-        )
+        fecha = st.date_input("Fecha", value=datetime.now(ZONA_PERU).date(), key=f"fecha_{form_id}")
+
+    # Filtrar códigos según UT seleccionada
+    codigos_disponibles = []
+    nombres_disponibles = {}
+    ut_normalizada = ut.replace("UT - ", "U.T. ")
+    if ut and ut_normalizada in datos_ut:
+        codigos_disponibles = [d["codigo"] for d in datos_ut[ut_normalizada]]
+        nombres_disponibles = {d["codigo"]: d["nombre"] for d in datos_ut[ut_normalizada]}
 
     with col3:
-        codigos_disponibles = []
-        if ut:
-            codigos_disponibles = [d["codigo"] for d in datos_ut[ut]]
-        codigo_usuario = st.selectbox(
-            "Código de Usuario",
-            [""] + codigos_disponibles,
-            key=f"codigo_{form_id}"
-        )
+        codigo_usuario = st.selectbox("Código de Usuario", [""] + codigos_disponibles, key=f"codigo_{form_id}")
 
     with col4:
-        nombre_automatico = ""
-        if ut and codigo_usuario:
-            for d in datos_ut[ut]:
-                if d["codigo"] == codigo_usuario:
-                    nombre_automatico = d["nombre"]
-                    break
-        nombres = st.text_input("Apellidos y Nombres", value=nombre_automatico, key=f"nombres_{form_id}")
+        nombres = st.text_input("Apellidos y Nombres", value=nombres_disponibles.get(codigo_usuario, ""), key=f"nombres_{form_id}")
 
     with col5:
         cargo = st.selectbox(
             "Cargo/Puesto",
-            ["", "JEFE DE UNIDAD TERRITORIAL", "COORDINADOR TERRITORIAL","PROMOTOR","TECNICO EN ATENCION AL USUARIO",
-             "ASISTENTE TECNICO EN SABERES PRODUCTIVOS","AUXILIAR ADMINISTRATIVO","CONDUCTOR","TECNICO EN ATENCION DE PLATAFORMA",
-             "ASISTENTE ADMINISTRATIVO","OTRO"],
+            ["", "JEFE DE UNIDAD TERRITORIAL", "COORDINADOR TERRITORIAL","PROMOTOR",
+             "TECNICO EN ATENCION AL USUARIO","ASISTENTE TECNICO EN SABERES PRODUCTIVOS",
+             "AUXILIAR ADMINISTRATIVO","CONDUCTOR","TECNICO EN ATENCION DE PLATAFORMA",
+             "ASISTENTE ADMINISTRATIVO", "OTRO"],
             key=f"cargo_{form_id}"
         )
 
     st.markdown("</div>", unsafe_allow_html=True)
 
+    # --- ACTIVIDADES ---
     titulo("Actividades")
     respuestas = {}
     for act, subs in actividades.items():
@@ -198,22 +214,14 @@ if guardar:
         sheet = client.open_by_key(SHEET_ID).sheet1
 
         timestamp = datetime.now(ZONA_PERU).strftime("%d/%m/%Y %H:%M:%S")
-
         nombres_mayus = nombres.strip().upper()
         otras_mayus = otras_actividades.strip().upper()
 
         for act, sub in respuestas.items():
             if sub:
                 sheet.append_row([
-                    timestamp,
-                    ut,
-                    fecha.strftime("%d/%m/%Y"),
-                    codigo_usuario,
-                    nombres_mayus,
-                    cargo,
-                    act,
-                    sub,
-                    otras_mayus
+                    timestamp, ut, fecha.strftime("%d/%m/%Y"), codigo_usuario,
+                    nombres_mayus, cargo, act, sub, otras_mayus
                 ])
 
         st.success("✅ Registro guardado correctamente")
