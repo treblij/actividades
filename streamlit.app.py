@@ -90,7 +90,13 @@ def titulo(texto):
 
 # ================= ACTIVIDADES =================
 actividades = {
-    "BIENESTAR": ["VACACIONES","LICENCIA SINDICAL","EXAMEN MEDICO","LICENCIA MEDICA","ACTIVO"],
+    "BIENESTAR": ["VACACIONES",
+                  "ACTIVO",
+                  "LICENCIA SINDICAL",
+                  "EXAMEN MEDICO OCUPACIONAL",
+                  "LICENCIA MEDICA", 
+                  "ONOMASTICO", 
+                  "DESCANSO FISICO POR COMPENSACION"],
     "VISITAS": [
         "VISITAS DOMICILIARIAS A USUARIOS REGULARES","BARRIDOS",
         "VISITAS A USUARIOS CON EMPRENDIMIENTOS","VISITAS A TERCEROS AUTORIZADOS",
@@ -166,8 +172,15 @@ with st.form(key=f"form_{form_id}"):
     with col5:
         cargo = st.selectbox(
             "Cargo/Puesto",
-            ["", "CT-Coordinador Territorial", "PRO-Promotor",
-             "ATE-Asistente Técnico", "Gestor te Acompaño", "Otro"],
+            ["", "JEFE DE UNIDAD TERRITORIAL", 
+                 "COORDINADOR TERRITORIAL",
+                 "PROMOTOR",
+                 "TECNICO EN ATENCION AL USUARIO",
+                 "ASISTENTE TECNICO EN SABERES PRODUCTIVOS",
+                 "AUXILIAR ADMINISTRATIVO",
+                 "CONDUCTOR",
+                 "TECNICO EN ATENCION DE PLATAFORMA",
+                 "ASISTENTE ADMINISTRATIVO", "OTRO"],
             key=f"cargo_{form_id}"
         )
 
