@@ -1,5 +1,4 @@
 import streamlit as st
-import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
@@ -26,22 +25,22 @@ USUARIOS = {
 
 def login():
     st.markdown("<h2 style='text-align:center;'>🔐 Ingreso al Sistema</h2>", unsafe_allow_html=True)
-    usuario = st.text_input("Usuario", key="login_usuario")
-    contrasena = st.text_input("Contraseña", type="password", key="login_pass")
+    usuario = st.text_input("Usuario")
+    contrasena = st.text_input("Contraseña", type="password")
 
     if st.button("Ingresar"):
-        if usuario in USUARIOS and USUARIOS[usuario] == contrasena:
-            st.session_state["login"] = True
-            st.session_state["usuario"] = usuario
-            st.success(f"Bienvenido {usuario} ✅")
+        if USUARIOS.get(usuario) == contrasena:
+            st.session_state.login = True
+            st.session_state.usuario = usuario
+            st.session_state.form_id = 0
             st.rerun()
         else:
             st.error("Usuario o contraseña incorrectos ❌")
 
 if "login" not in st.session_state:
-    st.session_state["login"] = False
+    st.session_state.login = False
 
-if not st.session_state["login"]:
+if not st.session_state.login:
     login()
     st.stop()
 
@@ -71,9 +70,7 @@ st.markdown("""
 def titulo(texto):
     st.markdown(f"<div class='cinta'>{texto}</div>", unsafe_allow_html=True)
 
-st.title("📋 Ficha de Registro de Actividades UT")
-
-# ================= ACTIVIDADES (DEFINIR ANTES PARA LIMPIEZA) =================
+# ================= ACTIVIDADES =================
 actividades = {
     "BIENESTAR": ["ACTIVO", "VACACIONES", "LICENCIA SINDICAL", "EXAMEN MEDICO", "LICENCIA MEDICA"],
     "VISITAS": ["VISITAS DOMICILIARIAS", "BARRIDOS", "VISITAS A EMPRENDIMIENTOS", "VISITAS REMOTAS"],
@@ -81,20 +78,16 @@ actividades = {
     "REUNIONES": ["REUNION EQUIPO UT", "REUNION CON SALUD", "REUNION CON GL"]
 }
 
-# ================= FUNCIÓN LIMPIAR FORMULARIO =================
-def limpiar_formulario():
-    keys_a_borrar = [
-        "ut", "fecha", "codigo_usuario", "nombres", "cargo",
-        "otras_actividades"
-    ] + list(actividades.keys())
+# ================= FORM ID =================
+if "form_id" not in st.session_state:
+    st.session_state.form_id = 0
 
-    for key in keys_a_borrar:
-        if key in st.session_state:
-            del st.session_state[key]
+# ================= FORMULARIO =================
+with st.form(key=f"form_{st.session_state.form_id}"):
 
-# ================= DATOS GENERALES =================
-titulo("Datos Generales")
-with st.container():
+    st.title("📋 Ficha de Registro de Actividades UT")
+
+    titulo("Datos Generales")
     st.markdown("<div class='tarjeta'>", unsafe_allow_html=True)
 
     col1, col2, col3, col4, col5 = st.columns(5)
@@ -102,92 +95,67 @@ with st.container():
     with col1:
         ut = st.selectbox(
             "UT",
-            [
-                "",
-                "UT - AMAZONAS","UT - ANCASH","UT - APURIMAC","UT - AREQUIPA",
-                "UT - AYACUCHO","UT - CUSCO","UT - HUANCAVELICA","UT - HUANUCO",
-                "UT - ICA","UT - JUNIN","UT - LA LIBERTAD","UT - LAMBAYEQUE",
-                "UT - LIMA METROPOLITANA Y CALLAO","UT - LIMA PROVINCIAS","UT - LORETO",
-                "UT - MADRE DE DIOS","UT - MOQUEGUA","UT - PASCO","UT - PIURA",
-                "UT - PUNO","UT - SAN MARTIN","UT - TACNA","UT - TUMBES","UT - UCAYALI"
-            ],
-            key="ut"
+            ["",
+             "UT - AMAZONAS","UT - ANCASH","UT - APURIMAC","UT - AREQUIPA",
+             "UT - AYACUCHO","UT - CUSCO","UT - HUANCAVELICA","UT - HUANUCO",
+             "UT - ICA","UT - JUNIN","UT - LA LIBERTAD","UT - LAMBAYEQUE",
+             "UT - LIMA METROPOLITANA Y CALLAO","UT - LIMA PROVINCIAS","UT - LORETO",
+             "UT - MADRE DE DIOS","UT - MOQUEGUA","UT - PASCO","UT - PIURA",
+             "UT - PUNO","UT - SAN MARTIN","UT - TACNA","UT - TUMBES","UT - UCAYALI"]
         )
 
     with col2:
-        fecha = st.date_input(
-            "Fecha",
-            value=datetime.today(),
-            max_value=datetime.today(),
-            key="fecha"
-        )
+        fecha = st.date_input("Fecha", value=datetime.today(), max_value=datetime.today())
 
     with col3:
-        codigo_usuario = st.text_input("Código de Usuario", key="codigo_usuario")
+        codigo_usuario = st.text_input("Código de Usuario")
 
     with col4:
-        nombres = st.text_input("Apellidos y Nombres", key="nombres")
+        nombres = st.text_input("Apellidos y Nombres")
 
     with col5:
         cargo = st.selectbox(
             "Cargo/Puesto",
             ["", "CT-Coordinador Territorial", "PRO-Promotor",
-             "ATE-Asistente Técnico", "Gestor te Acompaño", "Otro"],
-            key="cargo"
+             "ATE-Asistente Técnico", "Gestor te Acompaño", "Otro"]
         )
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-# ================= ACTIVIDADES =================
-titulo("Actividades")
+    titulo("Actividades")
 
-respuestas = {}
-for act, subs in actividades.items():
-    st.markdown(f"**{act}**")
-    respuestas[act] = st.selectbox(
-        f"Subactividad de {act}",
-        [""] + subs,
-        key=act
-    )
+    respuestas = {}
+    for act, subs in actividades.items():
+        respuestas[act] = st.selectbox(f"{act}", [""] + subs)
 
-otras_actividades = st.text_area("Otras actividades", key="otras_actividades")
+    otras_actividades = st.text_area("Otras actividades")
 
-# ================= BOTONES =================
-col1, col2 = st.columns(2)
+    colg1, colg2 = st.columns(2)
+    guardar = colg1.form_submit_button("💾 Guardar registro")
+    nuevo = colg2.form_submit_button("🆕 Nuevo registro")
 
-# Guardar registro
-with col1:
-    if st.button("💾 Guardar registro"):
-        if not ut or not codigo_usuario or not nombres or not cargo:
-            st.warning("⚠️ Complete todos los datos generales")
-        else:
-            filas = []
-            for act, sub in respuestas.items():
-                if sub:
-                    filas.append([
-                        ut,
-                        fecha.strftime("%d/%m/%Y"),
-                        codigo_usuario,
-                        nombres,
-                        cargo,
-                        act,
-                        sub,
-                        otras_actividades
-                    ])
-
-            if not filas:
-                st.warning("⚠️ No seleccionó actividades")
-            else:
-                sheet = conectar_sheet()
-                for fila in filas:
-                    sheet.append_row(fila)
-
-                st.success(f"✅ Se guardaron {len(filas)} registros")
-                limpiar_formulario()
-                st.rerun()
-
-# Nuevo registro
-with col2:
-    if st.button("🆕 Nuevo registro"):
-        limpiar_formulario()
+# ================= ACCIONES =================
+if guardar:
+    if not ut or not codigo_usuario or not nombres or not cargo:
+        st.warning("⚠️ Complete todos los datos generales")
+    else:
+        sheet = conectar_sheet()
+        for act, sub in respuestas.items():
+            if sub:
+                sheet.append_row([
+                    ut,
+                    fecha.strftime("%d/%m/%Y"),
+                    codigo_usuario,
+                    nombres,
+                    cargo,
+                    act,
+                    sub,
+                    otras_actividades
+                ])
+        st.success("✅ Registro guardado correctamente")
+        st.session_state.form_id += 1
         st.rerun()
+
+if nuevo:
+    st.session_state.form_id += 1
+    st.rerun()
