@@ -3,7 +3,6 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 import pytz
-import bcrypt
 
 # ================= CONFIGURACIÓN =================
 SHEET_ID = "1BihXG87fSsYxt2Ail1v805xwTStyL_4JOWbDPUp9ics"
@@ -12,7 +11,7 @@ ZONA_PERU = pytz.timezone("America/Lima")
 st.set_page_config(page_title="Ficha de Actividades UT", layout="wide")
 
 # ================= CONEXIÓN GOOGLE SHEETS =================
-def conectar_sheet(sheet_id=SHEET_ID):
+def conectar_sheet():
     creds = Credentials.from_service_account_info(
         st.secrets["connections"]["gsheets"],
         scopes=["https://www.googleapis.com/auth/spreadsheets"]
@@ -20,6 +19,7 @@ def conectar_sheet(sheet_id=SHEET_ID):
     client = gspread.authorize(creds)
     return client
 
+# ================= OBTENER USUARIOS =================
 def obtener_usuarios():
     client = conectar_sheet()
     sheet = client.open_by_key(SHEET_ID).worksheet("USUARIOS")
@@ -28,54 +28,25 @@ def obtener_usuarios():
     usuarios = {}
     for fila in data:
         usuario = fila.get("usuario")
-        password_hash = fila.get("password_hash")
+        contrasena = fila.get("password_hash")  # texto plano
         activo = fila.get("activo", "").strip().upper()
         rol = fila.get("rol", "USER")
 
-        if not usuario or not password_hash:
-            continue
-
-        if activo == "SI":
+        if usuario and contrasena and activo == "SI":
             usuarios[usuario] = {
-                "hash": password_hash,
+                "password": contrasena.strip(),
                 "rol": rol
             }
     return usuarios
-
-# ================= ESTILOS =================
-st.markdown("""
-<style>
-.cinta {
-    background: linear-gradient(90deg, #1f77b4, #4fa3d1);
-    padding: 10px;
-    border-radius: 8px;
-    font-size: 22px;
-    font-weight: bold;
-    color: white;
-    text-align: center;
-    margin: 20px 0;
-}
-.tarjeta {
-    background: white;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
-    margin-bottom: 25px;
-}
-.login-container {
-    max-width: 400px;
-    margin: 0 auto 40px auto;
-    text-align: center;
-}
-</style>
-""", unsafe_allow_html=True)
 
 # ================= LOGIN =================
 if "login" not in st.session_state:
     st.session_state.login = False
 
+usuarios = obtener_usuarios()
+
 def login():
-    st.markdown('<div class="login-container">', unsafe_allow_html=True)
+    st.markdown('<div style="max-width:400px;margin:0 auto;text-align:center">', unsafe_allow_html=True)
     st.image("logo.png", width=150)
     st.markdown("<h2>🔐 Ingreso al Sistema</h2>", unsafe_allow_html=True)
 
@@ -83,18 +54,13 @@ def login():
     contrasena = st.text_input("Contraseña", type="password")
 
     if st.button("Ingresar"):
-        usuarios = obtener_usuarios()
-        if usuario in usuarios:
-            hash_guardado = usuarios[usuario]["hash"].encode()
-            if bcrypt.checkpw(contrasena.encode(), hash_guardado):
-                st.session_state.login = True
-                st.session_state.usuario = usuario
-                st.session_state.form_id = 0
-                st.success(f"✅ Bienvenido {usuario}")
-            else:
-                st.error("Contraseña incorrecta ❌")
+        if usuario in usuarios and usuarios[usuario]["password"] == contrasena:
+            st.session_state.login = True
+            st.session_state.usuario = usuario
+            st.session_state.form_id = 0
+            st.success(f"Bienvenido {usuario}!")
         else:
-            st.error("Usuario no encontrado ❌")
+            st.error("Usuario o contraseña incorrectos ❌")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -110,49 +76,28 @@ if col_logout.button("🔓 Cerrar sesión"):
 
 # ================= FUNCIONES =================
 def titulo(texto):
-    st.markdown(f"<div class='cinta'>{texto}</div>", unsafe_allow_html=True)
-
-def conectar_sheet_actividades():
-    client = conectar_sheet()
-    return client.open_by_key(SHEET_ID).sheet1
+    st.markdown(f"""
+    <div style="
+        background: linear-gradient(90deg, #1f77b4, #4fa3d1);
+        padding: 10px;
+        border-radius: 8px;
+        font-size: 22px;
+        font-weight: bold;
+        color: white;
+        text-align: center;
+        margin: 20px 0;
+    ">{texto}</div>
+    """, unsafe_allow_html=True)
 
 # ================= ACTIVIDADES =================
 actividades = {
-    "BIENESTAR": ["VACACIONES",
-                  "ACTIVO",
-                  "LICENCIA SINDICAL",
-                  "EXAMEN MEDICO OCUPACIONAL",
-                  "LICENCIA MEDICA", 
-                  "ONOMASTICO", 
-                  "DESCANSO FISICO POR COMPENSACION"],
-    "VISITAS": [
-        "VISITAS DOMICILIARIAS A USUARIOS REGULARES","BARRIDOS",
-        "VISITAS A USUARIOS CON EMPRENDIMIENTOS","VISITAS A TERCEROS AUTORIZADOS",
-        "VISITAS DE CONVOCATORIA DE TE ACOMPAÑO","CONVOCATORIA PARA CAMPAÑAS",
-        "VISITAS REMOTAS"
-    ],
+    "BIENESTAR": ["VACACIONES","ACTIVO","LICENCIA SINDICAL","EXAMEN MEDICO OCUPACIONAL","LICENCIA MEDICA","ONOMASTICO","DESCANSO FISICO POR COMPENSACION"],
+    "VISITAS": ["VISITAS DOMICILIARIAS A USUARIOS REGULARES","BARRIDOS","VISITAS A USUARIOS CON EMPRENDIMIENTOS","VISITAS A TERCEROS AUTORIZADOS","VISITAS DE CONVOCATORIA DE TE ACOMPAÑO","CONVOCATORIA PARA CAMPAÑAS","VISITAS REMOTAS"],
     "PAGO RBU": ["SUPERVISION Y ACOMPAÑAMIENTO DEL PAGO","TARJETIZACION","SUPERVISION ETV"],
     "MUNICIPALIDAD": ["ATENCION EN ULE","PARTICIPACION EN IAL"],
-    "GABINETE": [
-        "REGISTRO DE DJ","ELABORACION DE INFORMES, PRIORIZACIONES Y OTROS",
-        "GABINETE TE ACOMPAÑO","MAPEO DE USUARIOS","SUPERVISION DE PROMOTORES",
-        "APOYO UT","REGISTRO DE EMPRENDIMIENTOS","REGISTRO DE DONACIONES",
-        "DESPLAZAMIENTO A COMISIONES","ATENCION AL USUARIO Y TRAMITES",
-        "ASISTENCIA Y CAPACITACION A ACTORES EXTERNOS",
-        "CAPACITACIONES AL PERSONAL","REGISTRO DE SABERES",
-        "ASISTENCIA TECNICA SABERES PRODUCTIVOS"
-    ],
-    "CAMPAÑAS": [
-        "PARTICIPACION EN EMERGENCIAS (INCENDIOS)","AVANZADA PARA CAMPAÑAS",
-        "PARTICIPACION EN CAMPAÑAS DE ENTREGA DE DONACIONES",
-        "PARTICIPACION EN TE ACOMPAÑO","DIALOGOS DE SABERES",
-        "ENCUENTROS DE SABERES PRODUCTIVOS","TRANSMISION INTER GENERACIONAL",
-        "FERIAS DE EMPRENDIMIENTOS"
-    ],
-    "REUNIONES": [
-        "REUNION EQUIPO UT","REUNION CON SECTOR SALUD DIRESA, RIS, IPRESS",
-        "REUNION SABERES","REUNION CON GL"
-    ]
+    "GABINETE": ["REGISTRO DE DJ","ELABORACION DE INFORMES, PRIORIZACIONES Y OTROS","GABINETE TE ACOMPAÑO","MAPEO DE USUARIOS","SUPERVISION DE PROMOTORES","APOYO UT","REGISTRO DE EMPRENDIMIENTOS","REGISTRO DE DONACIONES","DESPLAZAMIENTO A COMISIONES","ATENCION AL USUARIO Y TRAMITES","ASISTENCIA Y CAPACITACION A ACTORES EXTERNOS","CAPACITACIONES AL PERSONAL","REGISTRO DE SABERES","ASISTENCIA TECNICA SABERES PRODUCTIVOS"],
+    "CAMPAÑAS": ["PARTICIPACION EN EMERGENCIAS (INCENDIOS)","AVANZADA PARA CAMPAÑAS","PARTICIPACION EN CAMPAÑAS DE ENTREGA DE DONACIONES","PARTICIPACION EN TE ACOMPAÑO","DIALOGOS DE SABERES","ENCUENTROS DE SABERES PRODUCTIVOS","TRANSMISION INTER GENERACIONAL","FERIAS DE EMPRENDIMIENTOS"],
+    "REUNIONES": ["REUNION EQUIPO UT","REUNION CON SECTOR SALUD DIRESA, RIS, IPRESS","REUNION SABERES","REUNION CON GL"]
 }
 
 # ================= FORM ID =================
@@ -167,7 +112,7 @@ with st.form(key=f"form_{form_id}"):
     st.title("📋 Ficha de Registro de Actividades UT")
 
     titulo("Datos Generales")
-    st.markdown("<div class='tarjeta'>", unsafe_allow_html=True)
+    st.markdown("<div style='background:white;padding:20px;border-radius:12px;box-shadow:0 3px 8px rgba(0,0,0,0.1);margin-bottom:25px'>", unsafe_allow_html=True)
 
     col1, col2, col3, col4, col5 = st.columns(5)
 
@@ -175,31 +120,10 @@ with st.form(key=f"form_{form_id}"):
         ut = st.selectbox(
             "UT",
             ["",
-            "U.T. AMAZONAS",
-            "U.T. ANCASH",
-            "U.T. APURIMAC",
-            "U.T. AREQUIPA",
-            "U.T. AYACUCHO",
-            "U.T. CAJAMARCA",
-            "U.T. CUSCO",
-            "U.T. HUANCAVELICA",
-            "U.T. HUANUCO",
-            "U.T. ICA",
-            "U.T. JUNIN",
-            "U.T. LA LIBERTAD",
-            "U.T. LAMBAYEQUE",
-            "U.T. LIMA METROPOLITANA Y CALLAO",
-            "U.T. LIMA PROVINCIAS",
-            "U.T. LORETO",
-            "U.T. MADRE DE DIOS",
-            "U.T. MOQUEGUA",
-            "U.T. PASCO",
-            "U.T. PIURA",
-            "U.T. PUNO",
-            "U.T. SAN MARTIN",
-            "U.T. TACNA",
-            "U.T. TUMBES",
-            "U.T. UCAYALI"],
+             "U.T. AMAZONAS","U.T. ANCASH","U.T. APURIMAC","U.T. AREQUIPA","U.T. AYACUCHO","U.T. CAJAMARCA","U.T. CUSCO",
+             "U.T. HUANCAVELICA","U.T. HUANUCO","U.T. ICA","U.T. JUNIN","U.T. LA LIBERTAD","U.T. LAMBAYEQUE",
+             "U.T. LIMA METROPOLITANA Y CALLAO","U.T. LIMA PROVINCIAS","U.T. LORETO","U.T. MADRE DE DIOS","U.T. MOQUEGUA",
+             "U.T. PASCO","U.T. PIURA","U.T. PUNO","U.T. SAN MARTIN","U.T. TACNA","U.T. TUMBES","U.T. UCAYALI"],
             key=f"ut_{form_id}"
         )
 
@@ -219,15 +143,9 @@ with st.form(key=f"form_{form_id}"):
     with col5:
         cargo = st.selectbox(
             "Cargo/Puesto",
-            ["", "JEFE DE UNIDAD TERRITORIAL", 
-                 "COORDINADOR TERRITORIAL",
-                 "PROMOTOR",
-                 "TECNICO EN ATENCION AL USUARIO",
-                 "ASISTENTE TECNICO EN SABERES PRODUCTIVOS",
-                 "AUXILIAR ADMINISTRATIVO",
-                 "CONDUCTOR",
-                 "TECNICO EN ATENCION DE PLATAFORMA",
-                 "ASISTENTE ADMINISTRATIVO", "OTRO"],
+            ["", "JEFE DE UNIDAD TERRITORIAL", "COORDINADOR TERRITORIAL","PROMOTOR","TECNICO EN ATENCION AL USUARIO",
+             "ASISTENTE TECNICO EN SABERES PRODUCTIVOS","AUXILIAR ADMINISTRATIVO","CONDUCTOR","TECNICO EN ATENCION DE PLATAFORMA",
+             "ASISTENTE ADMINISTRATIVO","OTRO"],
             key=f"cargo_{form_id}"
         )
 
@@ -250,7 +168,8 @@ if guardar:
     if not ut or not codigo_usuario or not nombres or not cargo:
         st.warning("⚠️ Complete todos los datos generales")
     else:
-        sheet = conectar_sheet_actividades()
+        client = conectar_sheet()
+        sheet = client.open_by_key(SHEET_ID).sheet1
 
         timestamp = datetime.now(ZONA_PERU).strftime("%d/%m/%Y %H:%M:%S")
 
