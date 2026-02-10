@@ -80,7 +80,7 @@ if not st.session_state.login:
 col_logout, _ = st.columns([1, 6])
 if col_logout.button("🔓 Cerrar sesión"):
     st.session_state.clear()
-    st.experimental_rerun()
+    st.experimental_rerun()  # Este sigue siendo válido para cerrar sesión
 
 # ================= FUNCIONES =================
 def titulo(texto):
@@ -172,6 +172,17 @@ with st.form(key=f"form_{form_id}"):
     nuevo = colg2.form_submit_button("🆕 Nuevo registro")
 
 # ================= ACCIONES =================
+def reiniciar_formulario():
+    # Incrementar form_id
+    st.session_state.form_id += 1
+    # Limpiar todos los campos relacionados
+    keys_a_borrar = [k for k in st.session_state.keys() if k.startswith((
+        "ut_", "fecha_", "codigo_", "nombres_", "cargo_",
+        "BIENESTAR", "VISITAS", "PAGO RBU", "MUNICIPALIDAD", "GABINETE", "CAMPAÑAS", "REUNIONES", "otras_"
+    ))]
+    for key in keys_a_borrar:
+        del st.session_state[key]
+
 if guardar:
     if not ut or not codigo_usuario or not nombres or not cargo:
         st.warning("⚠️ Complete todos los datos generales")
@@ -206,11 +217,9 @@ if guardar:
             try:
                 sheet.append_rows(filas)
                 st.success("✅ Registro guardado correctamente")
-                st.session_state.form_id += 1
-                st.experimental_rerun()
+                reiniciar_formulario()
             except Exception as e:
                 st.error(f"Error al guardar en Google Sheets: {e}")
 
 if nuevo:
-    st.session_state.form_id += 1
-    st.experimental_rerun()
+    reiniciar_formulario()
