@@ -17,76 +17,21 @@ def conectar_sheet():
     client = gspread.authorize(creds)
     return client.open_by_key(SHEET_ID).sheet1
 
-# ================= LOGIN MINIMALISTA =================
+# ================= LOGIN SIMPLE =================
 USUARIOS = {
     "admin": "1234",
     "jrm": "jrm"
 }
 
 def login():
+    st.markdown("<h2 style='text-align:center;'>🔐 Ingreso al Sistema</h2>", unsafe_allow_html=True)
+    
+    # Logo centrado
+    st.image("logo.png", width=200)  # Ajusta ancho según necesites
+    st.markdown("<br>", unsafe_allow_html=True)  # Espacio debajo del logo
 
-    # Estilos CSS para la tarjeta de login
-    st.markdown("""
-    <style>
-    .login-card {
-        width: 340px;
-        margin: 120px auto;
-        padding: 30px;
-        border-radius: 16px;
-        background: linear-gradient(135deg, #a2d5f2, #5eb8f2);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        text-align: center;
-        color: white;
-        font-family: 'Arial', sans-serif;
-    }
-    .login-card img {
-        width: 80px;
-        margin-bottom: 15px;
-        border-radius: 50%;
-        border: 2px solid white;
-    }
-    .login-title {
-        font-size: 22px;
-        font-weight: 600;
-        margin-bottom: 25px;
-    }
-    .login-input {
-        width: 90%;
-        padding: 10px;
-        margin-bottom: 15px;
-        border-radius: 8px;
-        border: none;
-        outline: none;
-        font-size: 16px;
-    }
-    .login-button {
-        width: 95%;
-        padding: 10px;
-        border: none;
-        border-radius: 8px;
-        background-color: #ffffff;
-        color: #5eb8f2;
-        font-weight: bold;
-        cursor: pointer;
-        font-size: 16px;
-    }
-    .login-button:hover {
-        background-color: #e6f2ff;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # HTML de la tarjeta
-    st.markdown("""
-    <div class="login-card">
-        <img src="logo.png">
-        <div class="login-title">Ingreso al Sistema</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Inputs de usuario y contraseña
-    usuario = st.text_input("Usuario", key="login_user")
-    contrasena = st.text_input("Contraseña", type="password", key="login_pass")
+    usuario = st.text_input("Usuario")
+    contrasena = st.text_input("Contraseña", type="password")
 
     if st.button("Ingresar"):
         if USUARIOS.get(usuario) == contrasena:
@@ -97,11 +42,9 @@ def login():
         else:
             st.error("Usuario o contraseña incorrectos ❌")
 
-# Inicializar estado de login
 if "login" not in st.session_state:
     st.session_state.login = False
 
-# Mostrar login si no está logueado
 if not st.session_state.login:
     login()
     st.stop()
