@@ -17,47 +17,37 @@ def conectar_sheet():
     client = gspread.authorize(creds)
     return client.open_by_key(SHEET_ID).sheet1
 
-# ================= LOGIN SIMPLE =================
-USUARIOS = {
-    "admin": "1234",
-    "jrm": "jrm"
-}
-
-def login():
-    st.markdown("<h2 style='text-align:center;'>🔐 Ingreso al Sistema</h2>", unsafe_allow_html=True)
-    
-    # Logo centrado
-    st.image("logo.png", width=200)  # Ajusta ancho según necesites
-    st.markdown("<br>", unsafe_allow_html=True)  # Espacio debajo del logo
-
-    usuario = st.text_input("Usuario")
-    contrasena = st.text_input("Contraseña", type="password")
-
-    if st.button("Ingresar"):
-        if USUARIOS.get(usuario) == contrasena:
-            st.session_state.login = True
-            st.session_state.usuario = usuario
-            st.session_state.form_id = 0
-            st.rerun()
-        else:
-            st.error("Usuario o contraseña incorrectos ❌")
-
-if "login" not in st.session_state:
-    st.session_state.login = False
-
-if not st.session_state.login:
-    login()
-    st.stop()
-
-# ================= LOGOUT =================
-col_logout, _ = st.columns([1, 6])
-if col_logout.button("🔓 Cerrar sesión"):
-    st.session_state.clear()
-    st.rerun()
-
 # ================= ESTILOS =================
 st.markdown("""
 <style>
+/* Login personalizado */
+.login-container {
+    background-color: #f0f8ff;
+    padding: 25px;
+    border-radius: 15px;
+    max-width: 400px;
+    margin: 0 auto;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.login-container h2 {
+    text-align: center;
+    color: #1f77b4;
+}
+.stTextInput>div>div>input {
+    background-color: #e6f2ff !important;
+    border-radius: 8px !important;
+    border: 1px solid #1f77b4 !important;
+    padding: 8px !important;
+}
+.stButton>button {
+    background-color: #1f77b4;
+    color: white;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+}
+.stButton>button:hover {
+    background-color: #4fa3d1;
+}
 .cinta {
     background: linear-gradient(90deg, #1f77b4, #4fa3d1);
     padding: 10px;
@@ -78,6 +68,47 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# ================= LOGIN SIMPLE =================
+USUARIOS = {
+    "admin": "1234",
+    "jrm": "jrm"
+}
+
+def login():
+    st.markdown('<div class="login-container">', unsafe_allow_html=True)
+    
+    # Logo arriba del título
+    st.image("logo.png", width=150)
+    st.markdown("<h2>🔐 Ingreso al Sistema</h2>", unsafe_allow_html=True)
+    
+    usuario = st.text_input("Usuario")
+    contrasena = st.text_input("Contraseña", type="password")
+
+    if st.button("Ingresar"):
+        if USUARIOS.get(usuario) == contrasena:
+            st.session_state.login = True
+            st.session_state.usuario = usuario
+            st.session_state.form_id = 0
+            st.rerun()
+        else:
+            st.error("Usuario o contraseña incorrectos ❌")
+    
+    st.markdown("</div>", unsafe_allow_html=True)
+
+if "login" not in st.session_state:
+    st.session_state.login = False
+
+if not st.session_state.login:
+    login()
+    st.stop()
+
+# ================= LOGOUT =================
+col_logout, _ = st.columns([1, 6])
+if col_logout.button("🔓 Cerrar sesión"):
+    st.session_state.clear()
+    st.rerun()
+
+# ================= FUNCIONES =================
 def titulo(texto):
     st.markdown(f"<div class='cinta'>{texto}</div>", unsafe_allow_html=True)
 
