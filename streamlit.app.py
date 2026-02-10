@@ -29,10 +29,6 @@ st.markdown("""
     margin: 0 auto;
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
-.login-container h2 {
-    text-align: center;
-    color: #1f77b4;
-}
 .stTextInput>div>div>input {
     background-color: #e6f2ff !important;
     border-radius: 8px !important;
@@ -77,9 +73,13 @@ USUARIOS = {
 def login():
     st.markdown('<div class="login-container">', unsafe_allow_html=True)
     
-    # Logo arriba del título
-    st.image("logo.png", width=150)
-    st.markdown("<h2>🔐 Ingreso al Sistema</h2>", unsafe_allow_html=True)
+    # Logo y título centrados
+    st.markdown("""
+    <div style="text-align: center;">
+        <img src="logo.png" width="150">
+        <h2>🔐 Ingreso al Sistema</h2>
+    </div>
+    """, unsafe_allow_html=True)
     
     usuario = st.text_input("Usuario")
     contrasena = st.text_input("Contraseña", type="password")
