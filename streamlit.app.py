@@ -34,7 +34,7 @@ def login():
             st.session_state["login"] = True
             st.session_state["usuario"] = usuario
             st.success(f"Bienvenido {usuario} ✅")
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Usuario o contraseña incorrectos ❌")
 
@@ -81,15 +81,19 @@ with st.container():
     col1, col2, col3, col4, col5 = st.columns(5)
 
     with col1:
-        ut = st.selectbox("UT", [
-            "",
-            "UT - AMAZONAS","UT - ANCASH","UT - APURIMAC","UT - AREQUIPA",
-            "UT - AYACUCHO","UT - CUSCO","UT - HUANCAVELICA","UT - HUANUCO",
-            "UT - ICA","UT - JUNIN","UT - LA LIBERTAD","UT - LAMBAYEQUE",
-            "UT - LIMA METROPOLITANA Y CALLAO","UT - LIMA PROVINCIAS","UT - LORETO",
-            "UT - MADRE DE DIOS","UT - MOQUEGUA","UT - PASCO","UT - PIURA",
-            "UT - PUNO","UT - SAN MARTIN","UT - TACNA","UT - TUMBES","UT - UCAYALI"
-        ], key="ut")
+        ut = st.selectbox(
+            "UT",
+            [
+                "",
+                "UT - AMAZONAS","UT - ANCASH","UT - APURIMAC","UT - AREQUIPA",
+                "UT - AYACUCHO","UT - CUSCO","UT - HUANCAVELICA","UT - HUANUCO",
+                "UT - ICA","UT - JUNIN","UT - LA LIBERTAD","UT - LAMBAYEQUE",
+                "UT - LIMA METROPOLITANA Y CALLAO","UT - LIMA PROVINCIAS","UT - LORETO",
+                "UT - MADRE DE DIOS","UT - MOQUEGUA","UT - PASCO","UT - PIURA",
+                "UT - PUNO","UT - SAN MARTIN","UT - TACNA","UT - TUMBES","UT - UCAYALI"
+            ],
+            key="ut"
+        )
 
     with col2:
         fecha = st.date_input("Fecha", max_value=datetime.today(), key="fecha")
@@ -123,7 +127,11 @@ actividades = {
 respuestas = {}
 for act, subs in actividades.items():
     st.markdown(f"**{act}**")
-    respuestas[act] = st.selectbox(f"Subactividad de {act}", [""] + subs, key=act)
+    respuestas[act] = st.selectbox(
+        f"Subactividad de {act}",
+        [""] + subs,
+        key=act
+    )
 
 otras_actividades = st.text_area("Otras actividades", key="otras_actividades")
 
@@ -139,7 +147,16 @@ with col1:
             filas = []
             for act, sub in respuestas.items():
                 if sub:
-                    filas.append([ut, fecha.strftime("%d/%m/%Y"), codigo_usuario, nombres, cargo, act, sub, otras_actividades])
+                    filas.append([
+                        ut,
+                        fecha.strftime("%d/%m/%Y"),
+                        codigo_usuario,
+                        nombres,
+                        cargo,
+                        act,
+                        sub,
+                        otras_actividades
+                    ])
 
             if not filas:
                 st.warning("⚠️ No seleccionó actividades")
@@ -153,18 +170,20 @@ with col1:
 # Nuevo registro
 with col2:
     if st.button("🆕 Nuevo registro"):
-        # Limpiar inputs
-        for key in ["ut", "fecha", "codigo_usuario", "nombres", "cargo"]:
+        for key in [
+            "ut", "fecha", "codigo_usuario", "nombres", "cargo",
+            "otras_actividades"
+        ]:
             if key in st.session_state:
                 del st.session_state[key]
+
         for act in actividades.keys():
             if act in st.session_state:
                 del st.session_state[act]
-        if "otras_actividades" in st.session_state:
-            del st.session_state["otras_actividades"]
-        st.experimental_rerun()
 
-# Rerun tras guardar registro
+        st.rerun()
+
+# ================= RERUN POST-GUARDADO =================
 if st.session_state.get("nuevo_rerun", False):
     st.session_state["nuevo_rerun"] = False
-    st.experimental_rerun()
+    st.rerun()
