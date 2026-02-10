@@ -73,6 +73,25 @@ def titulo(texto):
 
 st.title("📋 Ficha de Registro de Actividades UT")
 
+# ================= ACTIVIDADES (DEFINIR ANTES PARA LIMPIEZA) =================
+actividades = {
+    "BIENESTAR": ["ACTIVO", "VACACIONES", "LICENCIA SINDICAL", "EXAMEN MEDICO", "LICENCIA MEDICA"],
+    "VISITAS": ["VISITAS DOMICILIARIAS", "BARRIDOS", "VISITAS A EMPRENDIMIENTOS", "VISITAS REMOTAS"],
+    "GABINETE": ["REGISTRO DE DJ", "ELABORACION DE INFORMES", "SUPERVISION", "ATENCION AL USUARIO"],
+    "REUNIONES": ["REUNION EQUIPO UT", "REUNION CON SALUD", "REUNION CON GL"]
+}
+
+# ================= FUNCIÓN LIMPIAR FORMULARIO =================
+def limpiar_formulario():
+    keys_a_borrar = [
+        "ut", "fecha", "codigo_usuario", "nombres", "cargo",
+        "otras_actividades"
+    ] + list(actividades.keys())
+
+    for key in keys_a_borrar:
+        if key in st.session_state:
+            del st.session_state[key]
+
 # ================= DATOS GENERALES =================
 titulo("Datos Generales")
 with st.container():
@@ -96,7 +115,12 @@ with st.container():
         )
 
     with col2:
-        fecha = st.date_input("Fecha", max_value=datetime.today(), key="fecha")
+        fecha = st.date_input(
+            "Fecha",
+            value=datetime.today(),
+            max_value=datetime.today(),
+            key="fecha"
+        )
 
     with col3:
         codigo_usuario = st.text_input("Código de Usuario", key="codigo_usuario")
@@ -116,13 +140,6 @@ with st.container():
 
 # ================= ACTIVIDADES =================
 titulo("Actividades")
-
-actividades = {
-    "BIENESTAR": ["ACTIVO", "VACACIONES", "LICENCIA SINDICAL", "EXAMEN MEDICO", "LICENCIA MEDICA"],
-    "VISITAS": ["VISITAS DOMICILIARIAS", "BARRIDOS", "VISITAS A EMPRENDIMIENTOS", "VISITAS REMOTAS"],
-    "GABINETE": ["REGISTRO DE DJ", "ELABORACION DE INFORMES", "SUPERVISION", "ATENCION AL USUARIO"],
-    "REUNIONES": ["REUNION EQUIPO UT", "REUNION CON SALUD", "REUNION CON GL"]
-}
 
 respuestas = {}
 for act, subs in actividades.items():
@@ -164,26 +181,13 @@ with col1:
                 sheet = conectar_sheet()
                 for fila in filas:
                     sheet.append_row(fila)
+
                 st.success(f"✅ Se guardaron {len(filas)} registros")
-                st.session_state["nuevo_rerun"] = True
+                limpiar_formulario()
+                st.rerun()
 
 # Nuevo registro
 with col2:
     if st.button("🆕 Nuevo registro"):
-        for key in [
-            "ut", "fecha", "codigo_usuario", "nombres", "cargo",
-            "otras_actividades"
-        ]:
-            if key in st.session_state:
-                del st.session_state[key]
-
-        for act in actividades.keys():
-            if act in st.session_state:
-                del st.session_state[act]
-
+        limpiar_formulario()
         st.rerun()
-
-# ================= RERUN POST-GUARDADO =================
-if st.session_state.get("nuevo_rerun", False):
-    st.session_state["nuevo_rerun"] = False
-    st.rerun()
