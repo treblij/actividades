@@ -28,13 +28,14 @@ def obtener_usuarios():
     usuarios = {}
     for fila in data:
         usuario = fila.get("usuario")
-        contrasena = fila.get("password_hash")  # texto plano
-        activo = fila.get("activo", "").strip().upper()
+        contrasena = fila.get("password_hash")
+        activo = fila.get("activo")  # puede estar vacío
         rol = fila.get("rol", "USER")
 
-        if usuario and contrasena and activo == "SI":
+        # Solo agregar si tiene info en 'activo' (no vacío)
+        if usuario and contrasena and activo and activo.strip():
             usuarios[usuario] = {
-                "password": contrasena.strip(),
+                "password": str(contrasena).strip(),
                 "rol": rol
             }
     return usuarios
