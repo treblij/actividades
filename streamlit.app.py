@@ -51,9 +51,11 @@ USUARIOS = {
     "jrm": "jrm"
 }
 
+if "login" not in st.session_state:
+    st.session_state.login = False
+
 def login():
     st.markdown('<div class="login-container">', unsafe_allow_html=True)
-
     st.image("logo.png", width=150)
     st.markdown("<h2>🔐 Ingreso al Sistema</h2>", unsafe_allow_html=True)
 
@@ -65,28 +67,21 @@ def login():
             st.session_state.login = True
             st.session_state.usuario = usuario
             st.session_state.form_id = 0
-            return True  # Login exitoso
         else:
             st.error("Usuario o contraseña incorrectos ❌")
 
     st.markdown('</div>', unsafe_allow_html=True)
-    return False  # Login no exitoso
 
-if "login" not in st.session_state:
-    st.session_state.login = False
-
+# Mostrar login si no ha iniciado sesión
 if not st.session_state.login:
-    logged_in = login()
-    if logged_in:
-        st.experimental_rerun()
-    else:
-        st.stop()
+    login()
+    st.stop()
 
 # ================= LOGOUT =================
 col_logout, _ = st.columns([1, 6])
 if col_logout.button("🔓 Cerrar sesión"):
     st.session_state.clear()
-    st.experimental_rerun()
+    st.experimental_rerun()  # Este es seguro porque es dentro de callback de botón
 
 # ================= FUNCIONES =================
 def titulo(texto):
@@ -175,9 +170,8 @@ if guardar:
     else:
         sheet = conectar_sheet()
         timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-
         for act, sub in respuestas.items():
-            if sub:  # evita guardar vacíos
+            if sub:
                 sheet.append_row([
                     timestamp,
                     ut,
@@ -189,11 +183,10 @@ if guardar:
                     sub,
                     otras_actividades
                 ])
-
         st.success("✅ Registro guardado correctamente")
         st.session_state.form_id += 1
-        st.experimental_rerun()
+        st.experimental_rerun()  # Seguro dentro del botón del form
 
 if nuevo:
     st.session_state.form_id += 1
-    st.experimental_rerun()
+    st.experimental_rerun()  # Seguro dentro del botón del form
