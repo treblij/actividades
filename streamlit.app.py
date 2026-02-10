@@ -12,18 +12,26 @@ st.set_page_config(page_title="Ficha de Actividades UT", layout="wide")
 
 # ================= CONEXIÓN GOOGLE SHEETS =================
 def conectar_sheet():
-    creds = Credentials.from_service_account_info(
-        st.secrets["connections"]["gsheets"],
-        scopes=["https://www.googleapis.com/auth/spreadsheets"]
-    )
-    client = gspread.authorize(creds)
-    return client
+    try:
+        creds = Credentials.from_service_account_info(
+            st.secrets["connections"]["gsheets"],
+            scopes=["https://www.googleapis.com/auth/spreadsheets"]
+        )
+        client = gspread.authorize(creds)
+        return client
+    except Exception as e:
+        st.error(f"Error al conectar con Google Sheets: {e}")
+        st.stop()
 
 # ================= OBTENER USUARIOS =================
 def obtener_usuarios():
     client = conectar_sheet()
-    sheet = client.open_by_key(SHEET_ID).worksheet("USUARIOS")
-    data = sheet.get_all_records()
+    try:
+        sheet = client.open_by_key(SHEET_ID).worksheet("USUARIOS")
+        data = sheet.get_all_records()
+    except Exception as e:
+        st.error(f"Error al obtener usuarios: {e}")
+        st.stop()
 
     usuarios = {}
     for fila in data:
@@ -32,7 +40,6 @@ def obtener_usuarios():
         activo = fila.get("activo")  # puede estar vacío
         rol = fila.get("rol", "USER")
 
-        # Solo agregar si tiene info en 'activo' (no vacío)
         if usuario and contrasena and activo and activo.strip():
             usuarios[usuario] = {
                 "password": str(contrasena).strip(),
@@ -170,31 +177,39 @@ if guardar:
         st.warning("⚠️ Complete todos los datos generales")
     else:
         client = conectar_sheet()
-        sheet = client.open_by_key(SHEET_ID).sheet1
+        try:
+            sheet = client.open_by_key(SHEET_ID).sheet1
+        except Exception as e:
+            st.error(f"Error al abrir la hoja: {e}")
+            st.stop()
 
         timestamp = datetime.now(ZONA_PERU).strftime("%d/%m/%Y %H:%M:%S")
-
-        # FORZAR MAYÚSCULAS
         nombres_mayus = nombres.strip().upper()
-        otras_mayus = otras_actividades.strip().upper()
+        otras_mayus = (otras_actividades or "").strip().upper()
 
+        filas = []
         for act, sub in respuestas.items():
             if sub:
-                sheet.append_row([
+                filas.append([
                     timestamp,
-                    ut,
+                    ut or "",
                     fecha.strftime("%d/%m/%Y"),
-                    codigo_usuario,
-                    nombres_mayus,
-                    cargo,
-                    act,
-                    sub,
+                    codigo_usuario or "",
+                    nombres_mayus or "",
+                    cargo or "",
+                    act or "",
+                    sub or "",
                     otras_mayus
                 ])
 
-        st.success("✅ Registro guardado correctamente")
-        st.session_state.form_id += 1
-        st.experimental_rerun()
+        if filas:
+            try:
+                sheet.append_rows(filas)
+                st.success("✅ Registro guardado correctamente")
+                st.session_state.form_id += 1
+                st.experimental_rerun()
+            except Exception as e:
+                st.error(f"Error al guardar en Google Sheets: {e}")
 
 if nuevo:
     st.session_state.form_id += 1
