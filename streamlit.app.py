@@ -61,18 +61,22 @@ def login():
                 st.session_state.login = True
                 st.session_state.usuario = usuario
                 st.session_state.form_id = 0
-                st.experimental_rerun()
+                # NO llamar aquí st.experimental_rerun()
             else:
                 st.error("Usuario o contraseña incorrectos ❌")
 
         st.markdown('</div>', unsafe_allow_html=True)
 
+# Fuera de la función, hacer la recarga si login cambió
 if "login" not in st.session_state:
     st.session_state.login = False
 
 if not st.session_state.login:
     login()
-    st.stop()
+    if st.session_state.get("login", False):
+        st.experimental_rerun()
+    else:
+        st.stop()
 
 # ================= ESTILOS =================
 st.markdown("""
