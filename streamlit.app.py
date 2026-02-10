@@ -52,13 +52,9 @@ USUARIOS = {
 }
 
 def login():
-    # Contenedor centrado para el login
     st.markdown('<div class="login-container">', unsafe_allow_html=True)
 
-    # Logo centrado arriba
     st.image("logo.png", width=150)
-
-    # Título centrado
     st.markdown("<h2>🔐 Ingreso al Sistema</h2>", unsafe_allow_html=True)
 
     usuario = st.text_input("Usuario")
@@ -69,18 +65,22 @@ def login():
             st.session_state.login = True
             st.session_state.usuario = usuario
             st.session_state.form_id = 0
-            st.experimental_rerun()
+            return True  # Login exitoso
         else:
             st.error("Usuario o contraseña incorrectos ❌")
 
     st.markdown('</div>', unsafe_allow_html=True)
+    return False  # Login no exitoso
 
 if "login" not in st.session_state:
     st.session_state.login = False
 
 if not st.session_state.login:
-    login()
-    st.stop()
+    logged_in = login()
+    if logged_in:
+        st.experimental_rerun()
+    else:
+        st.stop()
 
 # ================= LOGOUT =================
 col_logout, _ = st.columns([1, 6])
