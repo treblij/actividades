@@ -5,6 +5,7 @@ from datetime import datetime
 
 # ================= CONFIGURACIÓN =================
 SHEET_ID = "1BihXG87fSsYxt2Ail1v805xwTStyL_4JOWbDPUp9ics"
+
 st.set_page_config(page_title="Ficha de Actividades UT", layout="wide")
 
 # ================= CONEXIÓN GOOGLE SHEETS =================
@@ -16,58 +17,32 @@ def conectar_sheet():
     client = gspread.authorize(creds)
     return client.open_by_key(SHEET_ID).sheet1
 
-# ================= USUARIOS =================
-USUARIOS = {"admin": "1234", "usuario1": "abcd"}
+# ================= LOGIN SIMPLE =================
+USUARIOS = {
+    "admin": "1234",
+    "usuario1": "abcd"
+}
 
-# ================= SESIÓN =================
-if "login" not in st.session_state:
-    st.session_state.login = False
-if "form_id" not in st.session_state:
-    st.session_state.form_id = 0
-
-# ================= LOGIN =================
 def login():
-    st.markdown(
-        """
-        <style>
-        .login-container {
-            max-width: 350px;
-            margin: 100px auto;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 3px 15px rgba(0,0,0,0.2);
-            background: white;
-        }
-        .login-title {
-            text-align: center;
-            font-weight: 700;
-            font-size: 24px;
-            margin-bottom: 20px;
-            color: #1f77b4;
-        }
-        </style>
-        """, unsafe_allow_html=True
-    )
+    st.markdown("<h2 style='text-align:center;'>🔐 Ingreso al Sistema</h2>", unsafe_allow_html=True)
+    usuario = st.text_input("Usuario")
+    contrasena = st.text_input("Contraseña", type="password")
 
-    st.markdown('<div class="login-container">', unsafe_allow_html=True)
-    st.markdown('<div class="login-title">🔐 Ingreso al Sistema</div>', unsafe_allow_html=True)
-
-    usuario = st.text_input("Usuario", key="login_user")
-    contrasena = st.text_input("Contraseña", type="password", key="login_pass")
     if st.button("Ingresar"):
         if USUARIOS.get(usuario) == contrasena:
             st.session_state.login = True
             st.session_state.usuario = usuario
-            st.experimental_rerun()  # Esta llamada es segura aquí, fuera de forms
+            st.session_state.form_id = 0
+            st.rerun()
         else:
             st.error("Usuario o contraseña incorrectos ❌")
 
-    st.markdown('</div>', unsafe_allow_html=True)
+if "login" not in st.session_state:
+    st.session_state.login = False
 
-# ================= LÓGICA LOGIN =================
 if not st.session_state.login:
     login()
-    st.stop()  # No ejecutar nada más hasta logueo exitoso
+    st.stop()
 
 # ================= ESTILOS =================
 st.markdown("""
@@ -97,56 +72,71 @@ def titulo(texto):
 
 # ================= ACTIVIDADES =================
 actividades = {
-    "BIENESTAR": ["ACTIVO","VACACIONES","LICENCIA SINDICAL","EXAMEN MEDICO","LICENCIA MEDICA"],
-    "VISITAS": ["VISITAS DOMICILIARIAS","BARRIDOS","VISITAS A EMPRENDIMIENTOS","VISITAS REMOTAS"],
-    "GABINETE": ["REGISTRO DE DJ","ELABORACION DE INFORMES","SUPERVISION","ATENCION AL USUARIO"],
-    "REUNIONES": ["REUNION EQUIPO UT","REUNION CON SALUD","REUNION CON GL"]
+    "BIENESTAR": ["ACTIVO", "VACACIONES", "LICENCIA SINDICAL", "EXAMEN MEDICO", "LICENCIA MEDICA"],
+    "VISITAS": ["VISITAS DOMICILIARIAS", "BARRIDOS", "VISITAS A EMPRENDIMIENTOS", "VISITAS REMOTAS"],
+    "GABINETE": ["REGISTRO DE DJ", "ELABORACION DE INFORMES", "SUPERVISION", "ATENCION AL USUARIO"],
+    "REUNIONES": ["REUNION EQUIPO UT", "REUNION CON SALUD", "REUNION CON GL"]
 }
 
+# ================= FORM ID =================
+if "form_id" not in st.session_state:
+    st.session_state.form_id = 0
+
+form_id = st.session_state.form_id  # variable local para claridad
+
 # ================= FORMULARIO =================
-def limpiar_formulario():
-    keys_a_borrar = ["ut","fecha","codigo_usuario","nombres","cargo","otras_actividades"] + list(actividades.keys())
-    for key in keys_a_borrar:
-        if key in st.session_state:
-            del st.session_state[key]
+with st.form(key=f"form_{form_id}"):
 
-with st.form(key=f"form_{st.session_state.form_id}"):
+    st.title("📋 Ficha de Registro de Actividades UT")
 
-    st.title(f"Bienvenido {st.session_state.usuario} ✅")
-    st.markdown("<h3>📋 Ficha de Registro de Actividades UT</h3>", unsafe_allow_html=True)
-
-    # Datos generales
     titulo("Datos Generales")
     st.markdown("<div class='tarjeta'>", unsafe_allow_html=True)
-    col1,col2,col3,col4,col5 = st.columns(5)
+
+    col1, col2, col3, col4, col5 = st.columns(5)
+
     with col1:
-        ut = st.selectbox("UT", ["","UT - AMAZONAS","UT - ANCASH","UT - APURIMAC","UT - AREQUIPA",
-                                 "UT - AYACUCHO","UT - CUSCO","UT - HUANCAVELICA","UT - HUANUCO",
-                                 "UT - ICA","UT - JUNIN","UT - LA LIBERTAD","UT - LAMBAYEQUE",
-                                 "UT - LIMA METROPOLITANA Y CALLAO","UT - LIMA PROVINCIAS","UT - LORETO",
-                                 "UT - MADRE DE DIOS","UT - MOQUEGUA","UT - PASCO","UT - PIURA",
-                                 "UT - PUNO","UT - SAN MARTIN","UT - TACNA","UT - TUMBES","UT - UCAYALI"], key="ut")
+        ut = st.selectbox(
+            "UT",
+            ["",
+             "UT - AMAZONAS","UT - ANCASH","UT - APURIMAC","UT - AREQUIPA",
+             "UT - AYACUCHO","UT - CUSCO","UT - HUANCAVELICA","UT - HUANUCO",
+             "UT - ICA","UT - JUNIN","UT - LA LIBERTAD","UT - LAMBAYEQUE",
+             "UT - LIMA METROPOLITANA Y CALLAO","UT - LIMA PROVINCIAS","UT - LORETO",
+             "UT - MADRE DE DIOS","UT - MOQUEGUA","UT - PASCO","UT - PIURA",
+             "UT - PUNO","UT - SAN MARTIN","UT - TACNA","UT - TUMBES","UT - UCAYALI"],
+             key=f"ut_{form_id}"
+        )
+
     with col2:
-        fecha = st.date_input("Fecha", value=datetime.today(), max_value=datetime.today(), key="fecha")
+        fecha = st.date_input("Fecha", value=datetime.today(), max_value=datetime.today(), key=f"fecha_{form_id}")
+
     with col3:
-        codigo_usuario = st.text_input("Código de Usuario", key="codigo_usuario")
+        codigo_usuario = st.text_input("Código de Usuario", key=f"codigo_usuario_{form_id}")
+
     with col4:
-        nombres = st.text_input("Apellidos y Nombres", key="nombres")
+        nombres = st.text_input("Apellidos y Nombres", key=f"nombres_{form_id}")
+
     with col5:
-        cargo = st.selectbox("Cargo/Puesto", ["","CT-Coordinador Territorial","PRO-Promotor",
-                                             "ATE-Asistente Técnico","Gestor te Acompaño","Otro"], key="cargo")
+        cargo = st.selectbox(
+            "Cargo/Puesto",
+            ["", "CT-Coordinador Territorial", "PRO-Promotor",
+             "ATE-Asistente Técnico", "Gestor te Acompaño", "Otro"],
+             key=f"cargo_{form_id}"
+        )
+
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Actividades
     titulo("Actividades")
+
     respuestas = {}
     for act, subs in actividades.items():
-        respuestas[act] = st.selectbox(f"{act}", [""]+subs, key=act)
-    otras_actividades = st.text_area("Otras actividades", key="otras_actividades")
+        respuestas[act] = st.selectbox(f"{act}", [""] + subs, key=f"{act}_{form_id}")
 
-    colb1,colb2 = st.columns(2)
-    guardar = colb1.form_submit_button("💾 Guardar registro")
-    nuevo = colb2.form_submit_button("🆕 Nuevo registro")
+    otras_actividades = st.text_area("Otras actividades", key=f"otras_actividades_{form_id}")
+
+    colg1, colg2 = st.columns(2)
+    guardar = colg1.form_submit_button("💾 Guardar registro")
+    nuevo = colg2.form_submit_button("🆕 Nuevo registro")
 
 # ================= ACCIONES =================
 if guardar:
@@ -156,13 +146,20 @@ if guardar:
         sheet = conectar_sheet()
         for act, sub in respuestas.items():
             if sub:
-                sheet.append_row([ut, fecha.strftime("%d/%m/%Y"), codigo_usuario, nombres, cargo, act, sub, otras_actividades])
+                sheet.append_row([
+                    ut,
+                    fecha.strftime("%d/%m/%Y"),
+                    codigo_usuario,
+                    nombres,
+                    cargo,
+                    act,
+                    sub,
+                    otras_actividades
+                ])
         st.success("✅ Registro guardado correctamente")
-        limpiar_formulario()
-        st.session_state.form_id += 1
+        st.session_state.form_id += 1  # Incrementar form_id para limpiar formulario
         st.experimental_rerun()
 
 if nuevo:
-    limpiar_formulario()
-    st.session_state.form_id += 1
+    st.session_state.form_id += 1  # Incrementar form_id para limpiar formulario
     st.experimental_rerun()
