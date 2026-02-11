@@ -33,23 +33,25 @@ def cargar_datos_personales():
         st.error(f"Error al cargar datos personales: {e}")
         return {}
 
+    # Diccionario para estructura: { UT: { codigo_usuario: nombre_completo, ... }, ... }
     datos_personales = {}
     for fila in datos_raw:
         ut_key = fila.get("UT", "").strip()
         codigo = fila.get("CODIGO DE USUARIO", "").strip()
         nombre = fila.get("APELLIDOS Y NOMBRES", "").strip()
 
-        if ut_key:
+        if ut_key and codigo:
             if ut_key not in datos_personales:
-                datos_personales[ut_key] = []
-            datos_personales[ut_key].append({
-                "codigo": codigo,
-                "nombre": nombre
-            })
+                datos_personales[ut_key] = {}
+            datos_personales[ut_key][codigo] = nombre
 
     return datos_personales
 
-# ================= OBTENER USUARIOS =================
+# ================= LOGIN =================
+if "login" not in st.session_state:
+    st.session_state.login = False
+
+# Suponiendo que tienes usuarios configurados
 def obtener_usuarios():
     client = conectar_sheet()
     try:
@@ -73,12 +75,6 @@ def obtener_usuarios():
             }
     return usuarios
 
-# ================= LOGIN =================
-if "login" not in st.session_state:
-    st.session_state.login = False
-
-usuarios = obtener_usuarios()
-
 def login():
     st.markdown('<div style="max-width:400px;margin:0 auto;text-align:center">', unsafe_allow_html=True)
     st.image("logo.png", width=150)
@@ -98,6 +94,7 @@ def login():
 
     st.markdown('</div>', unsafe_allow_html=True)
 
+usuarios = obtener_usuarios()
 if not st.session_state.login:
     login()
     st.stop()
@@ -140,7 +137,7 @@ if "form_id" not in st.session_state:
 
 form_id = st.session_state.form_id
 
-# ================= CARGAR DATOS PERSONALES PARA AUTOCOMPLETAR =================
+# ================= CARGAR DATOS PERSONALES =================
 datos_personales = cargar_datos_personales()
 
 # ================= FORMULARIO =================
@@ -152,43 +149,30 @@ with st.form(key=f"form_{form_id}"):
 
     col1, col2, col3, col4, col5 = st.columns(5)
 
+    # 1. Seleccionar UT
     with col1:
-        ut = st.selectbox(
-            "UT",
-            [""] + sorted(datos_personales.keys()),
-            key=f"ut_{form_id}"
-        )
+        lista_ut = [""] + sorted(datos_personales.keys())
+        ut = st.selectbox("UT", lista_ut, key=f"ut_{form_id}")
+
+    # 2. Según UT, mostrar código usuario
+    with col3:
+        codigos_usuarios = [""]  # Por defecto vacío si no hay UT
+        if ut and ut in datos_personales:
+            codigos_usuarios += sorted(datos_personales[ut].keys())
+        codigo_usuario = st.selectbox("Código de Usuario", codigos_usuarios, key=f"codigo_{form_id}")
+
+    # 3. Autocompletar apellidos y nombres según código
+    with col4:
+        nombre_autocompletado = ""
+        if ut and codigo_usuario and ut in datos_personales and codigo_usuario in datos_personales[ut]:
+            nombre_autocompletado = datos_personales[ut][codigo_usuario]
+        nombres = st.text_input("Apellidos y Nombres", value=nombre_autocompletado, key=f"nombres_{form_id}", disabled=True)
 
     with col2:
         fecha = st.date_input(
             "Fecha",
             value=datetime.now(ZONA_PERU).date(),
             key=f"fecha_{form_id}"
-        )
-
-    # Variables para autocompletar
-    codigo_auto = ""
-    nombre_auto = ""
-
-    if ut and ut in datos_personales:
-        trabajador = datos_personales[ut][0]
-        codigo_auto = trabajador["codigo"]
-        nombre_auto = trabajador["nombre"]
-
-    with col3:
-        codigo_usuario = st.text_input(
-            "Código de Usuario",
-            value=codigo_auto,
-            key=f"codigo_{form_id}",
-            disabled=True
-        )
-
-    with col4:
-        nombres = st.text_input(
-            "Apellidos y Nombres",
-            value=nombre_auto,
-            key=f"nombres_{form_id}",
-            disabled=True
         )
 
     with col5:
