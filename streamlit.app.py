@@ -12,11 +12,16 @@ st.set_page_config(page_title="Ficha de Actividades UT", layout="wide")
 
 # ================= CONEXIÓN GOOGLE SHEETS =================
 def conectar_sheet():
-    creds = Credentials.from_service_account_info(
-        st.secrets["connections"]["gsheets"],
-        scopes=["https://www.googleapis.com/auth/spreadsheets"]
-    )
-    return gspread.authorize(creds)
+    try:
+        creds = Credentials.from_service_account_info(
+            st.secrets["connections"]["gsheets"],
+            scopes=["https://www.googleapis.com/auth/spreadsheets"]
+        )
+        client = gspread.authorize(creds)
+        return client
+    except Exception as e:
+        st.error(f"Error al conectar con Google Sheets: {e}")
+        st.stop()
 
 # ================= CARGAR DATOS PERSONALES =================
 @st.cache_data(ttl=300)
@@ -39,64 +44,75 @@ for fila in datos_personales:
             ut_dict[ut] = {}
         ut_dict[ut][codigo] = nombre
 
-# ================= CONTROL FORM =================
+# ================= CONTROL FORMULARIO =================
 if "form_id" not in st.session_state:
     st.session_state.form_id = 0
 
 form_id = st.session_state.form_id
 
-st.title("📋 Ficha de Registro de Actividades UT")
+# 🔵 RESET cuando cambia la UT
+def reset_codigo():
+    codigo_key = f"codigo_{form_id}"
+    if codigo_key in st.session_state:
+        st.session_state[codigo_key] = ""
 
-# ================= DATOS GENERALES (FUERA DEL FORM) =================
-col1, col2, col3, col4, col5 = st.columns(5)
-
-with col1:
-    ut = st.selectbox(
-        "UT",
-        [""] + sorted(ut_dict.keys()),
-        key=f"ut_{form_id}"
-    )
-
-with col2:
-    fecha = st.date_input(
-        "Fecha",
-        value=datetime.now(ZONA_PERU).date(),
-        key=f"fecha_{form_id}"
-    )
-
-with col3:
-    codigos = [""] + sorted(ut_dict.get(ut, {}).keys()) if ut else [""]
-    codigo_usuario = st.selectbox(
-        "Código de Usuario",
-        codigos,
-        key=f"codigo_{form_id}"
-    )
-
-with col4:
-    nombres = ""
-    if ut and codigo_usuario:
-        nombres = ut_dict[ut].get(codigo_usuario, "")
-
-    st.text_input(
-        "Apellidos y Nombres",
-        value=nombres,
-        disabled=True,
-        key=f"nombres_{form_id}"
-    )
-
-with col5:
-    cargo = st.selectbox(
-        "Cargo/Puesto",
-        ["", "JEFE DE UNIDAD TERRITORIAL", "COORDINADOR TERRITORIAL","PROMOTOR",
-         "TECNICO EN ATENCION AL USUARIO","ASISTENTE TECNICO EN SABERES PRODUCTIVOS",
-         "AUXILIAR ADMINISTRATIVO","CONDUCTOR","TECNICO EN ATENCION DE PLATAFORMA",
-         "ASISTENTE ADMINISTRATIVO","OTRO"],
-        key=f"cargo_{form_id}"
-    )
-
-# ================= ACTIVIDADES (DENTRO DEL FORM) =================
+# ================= FORMULARIO =================
 with st.form(key=f"form_{form_id}"):
 
+    st.title("📋 Ficha de Registro de Actividades UT")
+
+    col1, col2, col3, col4, col5 = st.columns(5)
+
+    # ========= UT =========
+    with col1:
+        ut = st.selectbox(
+            "UT",
+            [""] + sorted(ut_dict.keys()),
+            key=f"ut_{form_id}",
+            on_change=reset_codigo
+        )
+
+    # ========= FECHA =========
+    with col2:
+        fecha = st.date_input(
+            "Fecha",
+            value=datetime.now(ZONA_PERU).date(),
+            key=f"fecha_{form_id}"
+        )
+
+    # ========= CODIGO =========
+    with col3:
+        codigos = [""] + sorted(ut_dict.get(ut, {}).keys()) if ut else [""]
+        codigo_usuario = st.selectbox(
+            "Código de Usuario",
+            codigos,
+            key=f"codigo_{form_id}"
+        )
+
+    # ========= NOMBRES =========
+    with col4:
+        nombres = ""
+        if ut and codigo_usuario:
+            nombres = ut_dict[ut].get(codigo_usuario, "")
+        st.text_input(
+            "Apellidos y Nombres",
+            value=nombres,
+            disabled=True,
+            key=f"nombres_{form_id}"
+        )
+
+    # ========= CARGO =========
+    with col5:
+        cargo = st.selectbox(
+            "Cargo/Puesto",
+            ["", "JEFE DE UNIDAD TERRITORIAL", "COORDINADOR TERRITORIAL","PROMOTOR",
+             "TECNICO EN ATENCION AL USUARIO","ASISTENTE TECNICO EN SABERES PRODUCTIVOS",
+             "AUXILIAR ADMINISTRATIVO","CONDUCTOR","TECNICO EN ATENCION DE PLATAFORMA",
+             "ASISTENTE ADMINISTRATIVO","OTRO"],
+            key=f"cargo_{form_id}"
+        )
+
+    # ================= ACTIVIDADES =================
     actividades = {
         "BIENESTAR": ["VACACIONES","ACTIVO","LICENCIA SINDICAL","EXAMEN MEDICO OCUPACIONAL",
                       "LICENCIA MEDICA","ONOMASTICO","DESCANSO FISICO POR COMPENSACION"],
@@ -122,6 +138,7 @@ with st.form(key=f"form_{form_id}"):
         key=f"otras_{form_id}"
     )
 
+    # ========= BOTONES =========
     colg1, colg2 = st.columns(2)
     guardar = colg1.form_submit_button("💾 Guardar registro")
     nuevo = colg2.form_submit_button("🆕 Nuevo registro")
@@ -140,8 +157,10 @@ if guardar:
         sheet = client.open_by_key(SHEET_ID).sheet1
 
         timestamp = datetime.now(ZONA_PERU).strftime("%d/%m/%Y %H:%M:%S")
-        filas = []
+        nombres_mayus = nombres.upper()
+        otras_mayus = otras_actividades.upper() if otras_actividades else ""
 
+        filas = []
         for act, subs in respuestas.items():
             for sub in subs:
                 filas.append([
@@ -149,11 +168,11 @@ if guardar:
                     ut,
                     fecha.strftime("%d/%m/%Y"),
                     codigo_usuario,
-                    nombres.upper(),
+                    nombres_mayus,
                     cargo,
                     act,
                     sub,
-                    (otras_actividades or "").upper()
+                    otras_mayus
                 ])
 
         if filas:
