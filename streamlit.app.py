@@ -12,239 +12,119 @@ st.set_page_config(page_title="Ficha de Actividades UT", layout="wide")
 
 # ================= CONEXIÓN GOOGLE SHEETS =================
 def conectar_sheet():
-    try:
-        creds = Credentials.from_service_account_info(
-            st.secrets["connections"]["gsheets"],
-            scopes=["https://www.googleapis.com/auth/spreadsheets"]
-        )
-        client = gspread.authorize(creds)
-        return client
-    except Exception as e:
-        st.error(f"Error al conectar con Google Sheets: {e}")
-        st.stop()
+    creds = Credentials.from_service_account_info(
+        st.secrets["connections"]["gsheets"],
+        scopes=["https://www.googleapis.com/auth/spreadsheets"]
+    )
+    client = gspread.authorize(creds)
+    return client
 
 # ================= CARGAR DATOS PERSONALES =================
+@st.cache_data(ttl=300)
 def cargar_datos_personales():
     client = conectar_sheet()
-    try:
-        sheet = client.open_by_key(SHEET_ID).worksheet("DATOSPERSONALES")
-        datos_raw = sheet.get_all_records()
-    except Exception as e:
-        st.error(f"Error al cargar datos personales: {e}")
-        return {}
+    sheet = client.open_by_key(SHEET_ID).worksheet("DATOSPERSONALES")
+    datos = sheet.get_all_records()
+    return datos
 
-    # Diccionario para estructura: { UT: { codigo_usuario: nombre_completo, ... }, ... }
-    datos_personales = {}
-    for fila in datos_raw:
-        ut_key = fila.get("UT", "").strip()
-        codigo = fila.get("CODIGO DE USUARIO", "").strip()
-        nombre = fila.get("APELLIDOS Y NOMBRES", "").strip()
+datos_personales = cargar_datos_personales()
 
-        if ut_key and codigo:
-            if ut_key not in datos_personales:
-                datos_personales[ut_key] = {}
-            datos_personales[ut_key][codigo] = nombre
+# Diccionario para cascada UT -> CODIGO -> NOMBRES
+ut_dict = {}
+for fila in datos_personales:
+    ut = fila.get("UT", "").strip()
+    codigo = fila.get("CODIGO  DE USUARIO", "").strip()
+    nombres = fila.get("APELLIDOS Y NOMBRES", "").strip()
+    if ut and codigo:
+        if ut not in ut_dict:
+            ut_dict[ut] = {}
+        ut_dict[ut][codigo] = nombres
 
-    return datos_personales
+# ================= FORMULARIO =================
+st.title("📋 Ficha de Registro de Actividades UT")
 
-# ================= LOGIN =================
-if "login" not in st.session_state:
-    st.session_state.login = False
+# ---------------- Datos Generales ----------------
+st.subheader("Datos Generales")
+col1, col2, col3, col4, col5 = st.columns(5)
 
-# Suponiendo que tienes usuarios configurados
-def obtener_usuarios():
-    client = conectar_sheet()
-    try:
-        sheet = client.open_by_key(SHEET_ID).worksheet("USUARIOS")
-        data = sheet.get_all_records()
-    except Exception as e:
-        st.error(f"Error al obtener usuarios: {e}")
-        st.stop()
+# Selección UT
+with col1:
+    lista_ut = [""] + sorted(ut_dict.keys())
+    ut_seleccionada = st.selectbox("UT", lista_ut)
 
-    usuarios = {}
-    for fila in data:
-        usuario = fila.get("usuario")
-        contrasena = fila.get("password_hash")
-        activo = fila.get("activo")
-        rol = fila.get("rol", "USER")
+# Fecha
+with col2:
+    fecha = st.date_input("Fecha", value=datetime.now(ZONA_PERU).date())
 
-        if usuario and contrasena and activo and activo.strip():
-            usuarios[usuario] = {
-                "password": str(contrasena).strip(),
-                "rol": rol
-            }
-    return usuarios
+# Códigos de usuario según UT
+with col3:
+    codigos = [""] + sorted(ut_dict.get(ut_seleccionada, {}).keys()) if ut_seleccionada else [""]
+    codigo_usuario_seleccionado = st.selectbox("Código de Usuario", codigos)
 
-def login():
-    st.markdown('<div style="max-width:400px;margin:0 auto;text-align:center">', unsafe_allow_html=True)
-    st.image("logo.png", width=150)
-    st.markdown("<h2>🔐 Ingreso al Sistema</h2>", unsafe_allow_html=True)
+# Apellidos y nombres auto completado
+with col4:
+    nombres = ""
+    if ut_seleccionada and codigo_usuario_seleccionado:
+        nombres = ut_dict[ut_seleccionada][codigo_usuario_seleccionado]
+    st.text_input("Apellidos y Nombres", value=nombres, disabled=True)
 
-    usuario = st.text_input("Usuario")
-    contrasena = st.text_input("Contraseña", type="password")
+# Cargo
+with col5:
+    cargo = st.selectbox(
+        "Cargo/Puesto",
+        ["", "JEFE DE UNIDAD TERRITORIAL", "COORDINADOR TERRITORIAL","PROMOTOR",
+         "TECNICO EN ATENCION AL USUARIO","ASISTENTE TECNICO EN SABERES PRODUCTIVOS",
+         "AUXILIAR ADMINISTRATIVO","CONDUCTOR","TECNICO EN ATENCION DE PLATAFORMA",
+         "ASISTENTE ADMINISTRATIVO","OTRO"]
+    )
 
-    if st.button("Ingresar"):
-        if usuario in usuarios and usuarios[usuario]["password"] == contrasena:
-            st.session_state.login = True
-            st.session_state.usuario = usuario
-            st.session_state.form_id = 0
-            st.success(f"Bienvenido {usuario}!")
-        else:
-            st.error("Usuario o contraseña incorrectos ❌")
-
-    st.markdown('</div>', unsafe_allow_html=True)
-
-usuarios = obtener_usuarios()
-if not st.session_state.login:
-    login()
-    st.stop()
-
-# ================= LOGOUT =================
-col_logout, _ = st.columns([1, 6])
-if col_logout.button("🔓 Cerrar sesión"):
-    st.session_state.clear()
-    st.experimental_rerun()
-
-# ================= FUNCIONES =================
-def titulo(texto):
-    st.markdown(f"""
-    <div style="
-        background: linear-gradient(90deg, #1f77b4, #4fa3d1);
-        padding: 10px;
-        border-radius: 8px;
-        font-size: 22px;
-        font-weight: bold;
-        color: white;
-        text-align: center;
-        margin: 20px 0;
-    ">{texto}</div>
-    """, unsafe_allow_html=True)
-
-# ================= ACTIVIDADES =================
+# ---------------- Actividades ----------------
+st.subheader("Actividades")
 actividades = {
     "BIENESTAR": ["VACACIONES","ACTIVO","LICENCIA SINDICAL","EXAMEN MEDICO OCUPACIONAL","LICENCIA MEDICA","ONOMASTICO","DESCANSO FISICO POR COMPENSACION"],
     "VISITAS": ["VISITAS DOMICILIARIAS A USUARIOS REGULARES","BARRIDOS","VISITAS A USUARIOS CON EMPRENDIMIENTOS","VISITAS A TERCEROS AUTORIZADOS","VISITAS DE CONVOCATORIA DE TE ACOMPAÑO","CONVOCATORIA PARA CAMPAÑAS","VISITAS REMOTAS"],
     "PAGO RBU": ["SUPERVISION Y ACOMPAÑAMIENTO DEL PAGO","TARJETIZACION","SUPERVISION ETV"],
     "MUNICIPALIDAD": ["ATENCION EN ULE","PARTICIPACION EN IAL"],
-    "GABINETE": ["REGISTRO DE DJ","ELABORACION DE INFORMES, PRIORIZACIONES Y OTROS","GABINETE TE ACOMPAÑO","MAPEO DE USUARIOS","SUPERVISION DE PROMOTORES","APOYO UT","REGISTRO DE EMPRENDIMIENTOS","REGISTRO DE DONACIONES","DESPLAZAMIENTO A COMISIONES","ATENCION AL USUARIO Y TRAMITES","ASISTENCIA Y CAPACITACION A ACTORES EXTERNOS","CAPACITACIONES AL PERSONAL","REGISTRO DE SABERES","ASISTENCIA TECNICA SABERES PRODUCTIVOS"],
-    "CAMPAÑAS": ["PARTICIPACION EN EMERGENCIAS (INCENDIOS)","AVANZADA PARA CAMPAÑAS","PARTICIPACION EN CAMPAÑAS DE ENTREGA DE DONACIONES","PARTICIPACION EN TE ACOMPAÑO","DIALOGOS DE SABERES","ENCUENTROS DE SABERES PRODUCTIVOS","TRANSMISION INTER GENERACIONAL","FERIAS DE EMPRENDIMIENTOS"],
-    "REUNIONES": ["REUNION EQUIPO UT","REUNION CON SECTOR SALUD DIRESA, RIS, IPRESS","REUNION SABERES","REUNION CON GL"]
+    "GABINETE": ["REGISTRO DE DJ","ELABORACION DE INFORMES","GABINETE TE ACOMPAÑO","MAPEO DE USUARIOS","SUPERVISION DE PROMOTORES","APOYO UT","REGISTRO DE EMPRENDIMIENTOS","REGISTRO DE DONACIONES","DESPLAZAMIENTO A COMISIONES","ATENCION AL USUARIO Y TRAMITES","ASISTENCIA Y CAPACITACION A ACTORES EXTERNOS","CAPACITACIONES AL PERSONAL","REGISTRO DE SABERES","ASISTENCIA TECNICA SABERES PRODUCTIVOS"],
+    "CAMPAÑAS": ["PARTICIPACION EN EMERGENCIAS","AVANZADA PARA CAMPAÑAS","PARTICIPACION EN ENTREGA DE DONACIONES","PARTICIPACION EN TE ACOMPAÑO","DIALOGOS DE SABERES","ENCUENTROS DE SABERES PRODUCTIVOS","TRANSMISION INTER GENERACIONAL","FERIAS DE EMPRENDIMIENTOS"],
+    "REUNIONES": ["REUNION EQUIPO UT","REUNION CON SECTOR SALUD","REUNION SABERES","REUNION CON GL"]
 }
 
-# ================= FORM ID =================
-if "form_id" not in st.session_state:
-    st.session_state.form_id = 0
+respuestas = {}
+for act, sub_acts in actividades.items():
+    respuestas[act] = st.multiselect(f"{act}", sub_acts)
 
-form_id = st.session_state.form_id
+otras_actividades = st.text_area("Otras actividades")
 
-# ================= CARGAR DATOS PERSONALES =================
-datos_personales = cargar_datos_personales()
-
-# ================= FORMULARIO =================
-with st.form(key=f"form_{form_id}"):
-    st.title("📋 Ficha de Registro de Actividades UT")
-
-    titulo("Datos Generales")
-    st.markdown("<div style='background:white;padding:20px;border-radius:12px;box-shadow:0 3px 8px rgba(0,0,0,0.1);margin-bottom:25px'>", unsafe_allow_html=True)
-
-    col1, col2, col3, col4, col5 = st.columns(5)
-
-    # 1. Seleccionar UT
-    with col1:
-        lista_ut = [""] + sorted(datos_personales.keys())
-        ut = st.selectbox("UT", lista_ut, key=f"ut_{form_id}")
-
-    # 2. Según UT, mostrar código usuario
-    with col3:
-        codigos_usuarios = [""]  # Por defecto vacío si no hay UT
-        if ut and ut in datos_personales:
-            codigos_usuarios += sorted(datos_personales[ut].keys())
-        codigo_usuario = st.selectbox("Código de Usuario", codigos_usuarios, key=f"codigo_{form_id}")
-
-    # 3. Autocompletar apellidos y nombres según código
-    with col4:
-        nombre_autocompletado = ""
-        if ut and codigo_usuario and ut in datos_personales and codigo_usuario in datos_personales[ut]:
-            nombre_autocompletado = datos_personales[ut][codigo_usuario]
-        nombres = st.text_input("Apellidos y Nombres", value=nombre_autocompletado, key=f"nombres_{form_id}", disabled=True)
-
-    with col2:
-        fecha = st.date_input(
-            "Fecha",
-            value=datetime.now(ZONA_PERU).date(),
-            key=f"fecha_{form_id}"
-        )
-
-    with col5:
-        cargo = st.selectbox(
-            "Cargo/Puesto",
-            ["", "JEFE DE UNIDAD TERRITORIAL", "COORDINADOR TERRITORIAL","PROMOTOR","TECNICO EN ATENCION AL USUARIO",
-             "ASISTENTE TECNICO EN SABERES PRODUCTIVOS","AUXILIAR ADMINISTRATIVO","CONDUCTOR","TECNICO EN ATENCION DE PLATAFORMA",
-             "ASISTENTE ADMINISTRATIVO","OTRO"],
-            key=f"cargo_{form_id}"
-        )
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    titulo("Actividades")
-
-    respuestas = {}
-    for act, subs in actividades.items():
-        respuestas[act] = st.multiselect(f"{act}", subs, key=f"{act}_{form_id}")
-
-    otras_actividades = st.text_area("Otras actividades", key=f"otras_{form_id}")
-
-    colg1, colg2 = st.columns(2)
-    guardar = colg1.form_submit_button("💾 Guardar registro")
-    nuevo = colg2.form_submit_button("🆕 Nuevo registro")
-
-# ================= ACCIONES =================
-def reiniciar_formulario():
-    st.session_state.form_id += 1
-    keys_a_borrar = [k for k in st.session_state.keys() if k.startswith((
-        "ut_", "fecha_", "codigo_", "nombres_", "cargo_",
-        "BIENESTAR", "VISITAS", "PAGO RBU", "MUNICIPALIDAD", "GABINETE", "CAMPAÑAS", "REUNIONES", "otras_"
-    ))]
-    for key in keys_a_borrar:
-        del st.session_state[key]
-
-if guardar:
-    if not ut or not codigo_usuario or not nombres or not cargo:
+# ---------------- Guardar ----------------
+if st.button("💾 Guardar registro"):
+    if not ut_seleccionada or not codigo_usuario_seleccionado or not nombres or not cargo:
         st.warning("⚠️ Complete todos los datos generales")
     else:
-        client = conectar_sheet()
         try:
-            sheet = client.open_by_key(SHEET_ID).sheet1
-        except Exception as e:
-            st.error(f"Error al abrir la hoja: {e}")
-            st.stop()
+            client = conectar_sheet()
+            sheet = client.open_by_key(SHEET_ID).sheet1  # Cambia a tu hoja de destino si quieres
 
-        timestamp = datetime.now(ZONA_PERU).strftime("%d/%m/%Y %H:%M:%S")
-        nombres_mayus = nombres.strip().upper()
-        otras_mayus = (otras_actividades or "").strip().upper()
+            timestamp = datetime.now(ZONA_PERU).strftime("%d/%m/%Y %H:%M:%S")
+            filas = []
+            for act, sub_seleccionadas in respuestas.items():
+                for sub in sub_seleccionadas:
+                    filas.append([
+                        timestamp,
+                        ut_seleccionada,
+                        fecha.strftime("%d/%m/%Y"),
+                        codigo_usuario_seleccionado,
+                        nombres,
+                        cargo,
+                        act,
+                        sub,
+                        otras_actividades.upper() if otras_actividades else ""
+                    ])
 
-        filas = []
-        for act, subs_seleccionadas in respuestas.items():
-            for sub in subs_seleccionadas:
-                filas.append([
-                    timestamp,
-                    ut or "",
-                    fecha.strftime("%d/%m/%Y"),
-                    codigo_usuario or "",
-                    nombres_mayus or "",
-                    cargo or "",
-                    act or "",
-                    sub or "",
-                    otras_mayus
-                ])
-
-        if filas:
-            try:
+            if filas:
                 sheet.append_rows(filas)
                 st.success("✅ Registro guardado correctamente")
-                reiniciar_formulario()
-            except Exception as e:
-                st.error(f"Error al guardar en Google Sheets: {e}")
-
-if nuevo:
-    reiniciar_formulario()
+            else:
+                st.warning("Selecciona al menos una actividad")
+        except Exception as e:
+            st.error(f"Error al guardar en Google Sheets: {e}")
