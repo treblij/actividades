@@ -165,29 +165,16 @@ with st.form(key=f"form_{form_id}"):
             key=f"fecha_{form_id}"
         )
 
-    # --- Trabajador y autocompletado ---
-    trabajador = None
+    # --- Autocompletado Código y Nombres por UT ---
     codigo_auto = ""
     nombre_auto = ""
 
     if ut and ut in datos_personales:
         lista_trabajadores = datos_personales[ut]
-        nombres_lista = [t["nombre"] for t in lista_trabajadores]
-
-        trabajador_nombre = st.selectbox(
-            "Seleccione Trabajador",
-            [""] + nombres_lista,
-            key=f"trabajador_{form_id}"
-        )
-
-        if trabajador_nombre:
-            trabajador = next(
-                (t for t in lista_trabajadores if t["nombre"] == trabajador_nombre),
-                None
-            )
-            if trabajador:
-                codigo_auto = trabajador["codigo"]
-                nombre_auto = trabajador["nombre"]
+        # Auto seleccionar el primer trabajador en cascada
+        trabajador = lista_trabajadores[0]
+        codigo_auto = trabajador["codigo"]
+        nombre_auto = trabajador["nombre"]
 
     # --- Código de Usuario ---
     with col3:
@@ -236,7 +223,7 @@ def reiniciar_formulario():
     st.session_state.form_id += 1
     keys_a_borrar = [k for k in st.session_state.keys() if k.startswith((
         "ut_", "fecha_", "codigo_", "nombres_", "cargo_",
-        "BIENESTAR", "VISITAS", "PAGO RBU", "MUNICIPALIDAD", "GABINETE", "CAMPAÑAS", "REUNIONES", "otras_", "trabajador_"
+        "BIENESTAR", "VISITAS", "PAGO RBU", "MUNICIPALIDAD", "GABINETE", "CAMPAÑAS", "REUNIONES", "otras_"
     ))]
     for key in keys_a_borrar:
         del st.session_state[key]
