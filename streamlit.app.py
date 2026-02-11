@@ -80,7 +80,7 @@ if not st.session_state.login:
 col_logout, _ = st.columns([1, 6])
 if col_logout.button("🔓 Cerrar sesión"):
     st.session_state.clear()
-    st.experimental_rerun()
+    st.rerun()
 
 # ================= FUNCIONES =================
 def titulo(texto):
@@ -122,7 +122,6 @@ def cargar_datos_personales():
 
 datos_personales = cargar_datos_personales()
 
-# Crear diccionario UT -> Código -> Nombres
 ut_dict = {}
 for fila in datos_personales:
     ut = fila.get("UT", "").strip()
@@ -133,49 +132,41 @@ for fila in datos_personales:
             ut_dict[ut] = {}
         ut_dict[ut][codigo] = nombres
 
-# ================= FORMULARIO =================
+# ================= DATOS GENERALES (FUERA DEL FORM) =================
+
+st.title("📋 Ficha de Registro de Actividades UT")
+titulo("Datos Generales")
+
+col1, col2, col3, col4, col5 = st.columns(5)
+
+with col1:
+    ut = st.selectbox("UT", [""] + sorted(ut_dict.keys()), key=f"ut_{form_id}")
+
+with col2:
+    fecha = st.date_input("Fecha", value=datetime.now(ZONA_PERU).date(), key=f"fecha_{form_id}")
+
+with col3:
+    codigos = [""] + sorted(ut_dict.get(ut, {}).keys()) if ut else [""]
+    codigo_usuario = st.selectbox("Código de Usuario", codigos, key=f"codigo_{form_id}")
+
+with col4:
+    nombres = ""
+    if ut and codigo_usuario:
+        nombres = ut_dict[ut][codigo_usuario]
+    st.text_input("Apellidos y Nombres", value=nombres, disabled=True, key=f"nombres_{form_id}")
+
+with col5:
+    cargo = st.selectbox(
+        "Cargo/Puesto",
+        ["", "JEFE DE UNIDAD TERRITORIAL", "COORDINADOR TERRITORIAL","PROMOTOR","TECNICO EN ATENCION AL USUARIO",
+         "ASISTENTE TECNICO EN SABERES PRODUCTIVOS","AUXILIAR ADMINISTRATIVO","CONDUCTOR","TECNICO EN ATENCION DE PLATAFORMA",
+         "ASISTENTE ADMINISTRATIVO","OTRO"],
+        key=f"cargo_{form_id}"
+    )
+
+# ================= ACTIVIDADES (DENTRO DEL FORM) =================
 with st.form(key=f"form_{form_id}"):
 
-    st.title("📋 Ficha de Registro de Actividades UT")
-    titulo("Datos Generales")
-    st.markdown("<div style='background:white;padding:20px;border-radius:12px;box-shadow:0 3px 8px rgba(0,0,0,0.1);margin-bottom:25px'>", unsafe_allow_html=True)
-
-    col1, col2, col3, col4, col5 = st.columns(5)
-
-    with col1:
-        ut = st.selectbox(
-            "UT",
-            [""] + sorted(ut_dict.keys()),
-            key=f"ut_{form_id}"
-        )
-
-    with col2:
-        fecha = st.date_input(
-            "Fecha",
-            value=datetime.now(ZONA_PERU).date(),
-            key=f"fecha_{form_id}"
-        )
-
-    with col3:
-        codigos = [""] + sorted(ut_dict.get(ut, {}).keys()) if ut else [""]
-        codigo_usuario = st.selectbox("Código de Usuario", codigos, key=f"codigo_{form_id}")
-
-    with col4:
-        nombres = ""
-        if ut and codigo_usuario:
-            nombres = ut_dict[ut][codigo_usuario]
-        st.text_input("Apellidos y Nombres", value=nombres, disabled=True, key=f"nombres_{form_id}")
-
-    with col5:
-        cargo = st.selectbox(
-            "Cargo/Puesto",
-            ["", "JEFE DE UNIDAD TERRITORIAL", "COORDINADOR TERRITORIAL","PROMOTOR","TECNICO EN ATENCION AL USUARIO",
-             "ASISTENTE TECNICO EN SABERES PRODUCTIVOS","AUXILIAR ADMINISTRATIVO","CONDUCTOR","TECNICO EN ATENCION DE PLATAFORMA",
-             "ASISTENTE ADMINISTRATIVO","OTRO"],
-            key=f"cargo_{form_id}"
-        )
-
-    st.markdown("</div>", unsafe_allow_html=True)
     titulo("Actividades")
 
     respuestas = {}
@@ -184,59 +175,45 @@ with st.form(key=f"form_{form_id}"):
 
     otras_actividades = st.text_area("Otras actividades", key=f"otras_{form_id}")
 
-    # ---------------- Botones Guardar y Nuevo ----------------
     colg1, colg2 = st.columns(2)
     guardar = colg1.form_submit_button("💾 Guardar registro")
     nuevo = colg2.form_submit_button("🆕 Nuevo registro")
 
-# ================= ACCIONES =================
+# ================= FUNCIONES =================
 def reiniciar_formulario():
     st.session_state.form_id += 1
-    keys_a_borrar = [k for k in st.session_state.keys() if k.startswith((
-        "ut_", "fecha_", "codigo_", "nombres_", "cargo_",
-        "BIENESTAR", "VISITAS", "PAGO RBU", "MUNICIPALIDAD", "GABINETE", "CAMPAÑAS", "REUNIONES", "otras_"
-    ))]
-    for key in keys_a_borrar:
-        del st.session_state[key]
 
+# ================= ACCIONES =================
 if guardar:
     if not ut or not codigo_usuario or not nombres or not cargo:
         st.warning("⚠️ Complete todos los datos generales")
     else:
         client = conectar_sheet()
-        try:
-            sheet = client.open_by_key(SHEET_ID).sheet1
-        except Exception as e:
-            st.error(f"Error al abrir la hoja: {e}")
-            st.stop()
+        sheet = client.open_by_key(SHEET_ID).sheet1
 
         timestamp = datetime.now(ZONA_PERU).strftime("%d/%m/%Y %H:%M:%S")
-        nombres_mayus = nombres.strip().upper()
-        otras_mayus = (otras_actividades or "").strip().upper()
-
         filas = []
-        for act, subs_seleccionadas in respuestas.items():
-            for sub in subs_seleccionadas:
+
+        for act, subs in respuestas.items():
+            for sub in subs:
                 filas.append([
                     timestamp,
-                    ut or "",
+                    ut,
                     fecha.strftime("%d/%m/%Y"),
-                    codigo_usuario or "",
-                    nombres_mayus or "",
-                    cargo or "",
-                    act or "",
-                    sub or "",
-                    otras_mayus
+                    codigo_usuario,
+                    nombres.upper(),
+                    cargo,
+                    act,
+                    sub,
+                    (otras_actividades or "").upper()
                 ])
 
         if filas:
-            try:
-                sheet.append_rows(filas)
-                st.success("✅ Registro guardado correctamente")
-                reiniciar_formulario()
-            except Exception as e:
-                st.error(f"Error al guardar en Google Sheets: {e}")
+            sheet.append_rows(filas)
+            st.success("✅ Registro guardado correctamente")
+            reiniciar_formulario()
+            st.rerun()
 
 if nuevo:
     reiniciar_formulario()
-    st.experimental_rerun()
+    st.rerun()
