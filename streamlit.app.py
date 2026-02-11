@@ -37,15 +37,39 @@ def obtener_usuarios():
     for fila in data:
         usuario = fila.get("usuario")
         contrasena = fila.get("password_hash")
-        activo = fila.get("activo")  # puede estar vacío
+        activo = fila.get("activo")
         rol = fila.get("rol", "USER")
 
-        if usuario and contrasena and activo and activo.strip():
+        if usuario and contrasena and activo and str(activo).strip():
             usuarios[usuario] = {
                 "password": str(contrasena).strip(),
                 "rol": rol
             }
     return usuarios
+
+# ================= OBTENER DATOS PERSONALES =================
+def obtener_datos_personales():
+    client = conectar_sheet()
+    try:
+        sheet = client.open_by_key(SHEET_ID).worksheet("DATOSPERSONALES")
+        data = sheet.get_all_records()
+    except Exception as e:
+        st.error(f"Error al obtener DATOSPERSONALES: {e}")
+        st.stop()
+
+    datos = {}
+    for fila in data:
+        ut = fila.get("UT")
+        codigo = fila.get("CODIGO_SISOPE")
+        nombre = fila.get("NOMBRE")
+        if ut:
+            if ut not in datos:
+                datos[ut] = []
+            datos[ut].append({
+                "codigo": codigo,
+                "nombre": nombre
+            })
+    return datos
 
 # ================= LOGIN =================
 if "login" not in st.session_state:
@@ -69,7 +93,6 @@ def login():
             st.success(f"Bienvenido {usuario}!")
         else:
             st.error("Usuario o contraseña incorrectos ❌")
-
     st.markdown('</div>', unsafe_allow_html=True)
 
 if not st.session_state.login:
@@ -80,7 +103,7 @@ if not st.session_state.login:
 col_logout, _ = st.columns([1, 6])
 if col_logout.button("🔓 Cerrar sesión"):
     st.session_state.clear()
-    st.experimental_rerun()  # Para cerrar sesión
+    st.experimental_rerun()
 
 # ================= FUNCIONES =================
 def titulo(texto):
@@ -114,27 +137,27 @@ if "form_id" not in st.session_state:
 
 form_id = st.session_state.form_id
 
+# ================= CARGAR DATOS PERSONALES =================
+datos_personales = obtener_datos_personales()
+
 # ================= FORMULARIO =================
 with st.form(key=f"form_{form_id}"):
 
     st.title("📋 Ficha de Registro de Actividades UT")
-
     titulo("Datos Generales")
     st.markdown("<div style='background:white;padding:20px;border-radius:12px;box-shadow:0 3px 8px rgba(0,0,0,0.1);margin-bottom:25px'>", unsafe_allow_html=True)
 
     col1, col2, col3, col4, col5 = st.columns(5)
 
+    # --- UT ---
     with col1:
         ut = st.selectbox(
             "UT",
-            ["",
-             "U.T. AMAZONAS","U.T. ANCASH","U.T. APURIMAC","U.T. AREQUIPA","U.T. AYACUCHO","U.T. CAJAMARCA","U.T. CUSCO",
-             "U.T. HUANCAVELICA","U.T. HUANUCO","U.T. ICA","U.T. JUNIN","U.T. LA LIBERTAD","U.T. LAMBAYEQUE",
-             "U.T. LIMA METROPOLITANA Y CALLAO","U.T. LIMA PROVINCIAS","U.T. LORETO","U.T. MADRE DE DIOS","U.T. MOQUEGUA",
-             "U.T. PASCO","U.T. PIURA","U.T. PUNO","U.T. SAN MARTIN","U.T. TACNA","U.T. TUMBES","U.T. UCAYALI"],
+            [""] + sorted(datos_personales.keys()),
             key=f"ut_{form_id}"
         )
 
+    # --- Fecha ---
     with col2:
         fecha = st.date_input(
             "Fecha",
@@ -142,12 +165,49 @@ with st.form(key=f"form_{form_id}"):
             key=f"fecha_{form_id}"
         )
 
+    # --- Trabajador y autocompletado ---
+    trabajador = None
+    codigo_auto = ""
+    nombre_auto = ""
+
+    if ut and ut in datos_personales:
+        lista_trabajadores = datos_personales[ut]
+        nombres_lista = [t["nombre"] for t in lista_trabajadores]
+
+        trabajador_nombre = st.selectbox(
+            "Seleccione Trabajador",
+            [""] + nombres_lista,
+            key=f"trabajador_{form_id}"
+        )
+
+        if trabajador_nombre:
+            trabajador = next(
+                (t for t in lista_trabajadores if t["nombre"] == trabajador_nombre),
+                None
+            )
+            if trabajador:
+                codigo_auto = trabajador["codigo"]
+                nombre_auto = trabajador["nombre"]
+
+    # --- Código de Usuario ---
     with col3:
-        codigo_usuario = st.text_input("Código de Usuario", key=f"codigo_{form_id}")
+        codigo_usuario = st.text_input(
+            "Código de Usuario",
+            value=codigo_auto,
+            key=f"codigo_{form_id}",
+            disabled=True
+        )
 
+    # --- Nombres ---
     with col4:
-        nombres = st.text_input("Apellidos y Nombres", key=f"nombres_{form_id}")
+        nombres = st.text_input(
+            "Apellidos y Nombres",
+            value=nombre_auto,
+            key=f"nombres_{form_id}",
+            disabled=True
+        )
 
+    # --- Cargo/Puesto ---
     with col5:
         cargo = st.selectbox(
             "Cargo/Puesto",
@@ -159,11 +219,10 @@ with st.form(key=f"form_{form_id}"):
 
     st.markdown("</div>", unsafe_allow_html=True)
 
+    # --- Actividades ---
     titulo("Actividades")
-
     respuestas = {}
     for act, subs in actividades.items():
-        # Cambiado a MULTISELECT
         respuestas[act] = st.multiselect(f"{act}", subs, key=f"{act}_{form_id}")
 
     otras_actividades = st.text_area("Otras actividades", key=f"otras_{form_id}")
@@ -172,17 +231,17 @@ with st.form(key=f"form_{form_id}"):
     guardar = colg1.form_submit_button("💾 Guardar registro")
     nuevo = colg2.form_submit_button("🆕 Nuevo registro")
 
-# ================= ACCIONES =================
+# ================= FUNCIONES =================
 def reiniciar_formulario():
     st.session_state.form_id += 1
-    # Limpiar campos del formulario
     keys_a_borrar = [k for k in st.session_state.keys() if k.startswith((
         "ut_", "fecha_", "codigo_", "nombres_", "cargo_",
-        "BIENESTAR", "VISITAS", "PAGO RBU", "MUNICIPALIDAD", "GABINETE", "CAMPAÑAS", "REUNIONES", "otras_"
+        "BIENESTAR", "VISITAS", "PAGO RBU", "MUNICIPALIDAD", "GABINETE", "CAMPAÑAS", "REUNIONES", "otras_", "trabajador_"
     ))]
     for key in keys_a_borrar:
         del st.session_state[key]
 
+# ================= GUARDADO =================
 if guardar:
     if not ut or not codigo_usuario or not nombres or not cargo:
         st.warning("⚠️ Complete todos los datos generales")
@@ -199,7 +258,6 @@ if guardar:
         otras_mayus = (otras_actividades or "").strip().upper()
 
         filas = []
-        # Guardar múltiples sub-actividades por actividad
         for act, subs_seleccionadas in respuestas.items():
             for sub in subs_seleccionadas:
                 filas.append([
