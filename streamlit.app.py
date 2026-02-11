@@ -17,10 +17,18 @@ def conectar_sheet():
             st.secrets["connections"]["gsheets"],
             scopes=["https://www.googleapis.com/auth/spreadsheets"]
         )
-        return gspread.authorize(creds)
+        client = gspread.authorize(creds)
+        return client
     except Exception as e:
         st.error(f"Error al conectar con Google Sheets: {e}")
         st.stop()
+
+# ================= CACHE DATOS PERSONALES =================
+@st.cache_data(ttl=600)
+def cargar_datos_personales():
+    client = conectar_sheet()
+    sheet = client.open_by_key(SHEET_ID).worksheet("DATOSPERSONALES")
+    return sheet.get_all_records()
 
 # ================= OBTENER USUARIOS =================
 def obtener_usuarios():
@@ -35,7 +43,7 @@ def obtener_usuarios():
         activo = fila.get("activo")
         rol = fila.get("rol", "USER")
 
-        if usuario and contrasena and activo and activo.strip():
+        if usuario and contrasena and activo and str(activo).strip():
             usuarios[usuario] = {
                 "password": str(contrasena).strip(),
                 "rol": rol
@@ -49,8 +57,9 @@ if "login" not in st.session_state:
 usuarios = obtener_usuarios()
 
 def login():
+    st.markdown('<div style="max-width:400px;margin:0 auto;text-align:center">', unsafe_allow_html=True)
     st.image("logo.png", width=150)
-    st.subheader("🔐 Ingreso al Sistema")
+    st.markdown("<h2>🔐 Ingreso al Sistema</h2>", unsafe_allow_html=True)
 
     usuario = st.text_input("Usuario")
     contrasena = st.text_input("Contraseña", type="password")
@@ -61,15 +70,19 @@ def login():
             st.session_state.usuario = usuario
             st.session_state.form_id = 0
             st.success(f"Bienvenido {usuario}!")
+            st.rerun()
         else:
             st.error("Usuario o contraseña incorrectos ❌")
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 if not st.session_state.login:
     login()
     st.stop()
 
 # ================= LOGOUT =================
-if st.button("🔓 Cerrar sesión"):
+col_logout, _ = st.columns([1, 6])
+if col_logout.button("🔓 Cerrar sesión"):
     st.session_state.clear()
     st.rerun()
 
@@ -91,11 +104,6 @@ if "form_id" not in st.session_state:
 form_id = st.session_state.form_id
 
 # ================= CARGAR DATOS PERSONALES =================
-def cargar_datos_personales():
-    client = conectar_sheet()
-    sheet = client.open_by_key(SHEET_ID).worksheet("DATOSPERSONALES")
-    return sheet.get_all_records()
-
 datos_personales = cargar_datos_personales()
 
 ut_dict = {}
@@ -109,42 +117,60 @@ for fila in datos_personales:
             ut_dict[ut] = {}
         ut_dict[ut][codigo] = nombre
 
-# ================= DATOS GENERALES =================
-st.title("📋 Ficha de Registro de Actividades UT")
-
-col1, col2, col3, col4, col5 = st.columns(5)
-
-with col1:
-    ut = st.selectbox("UT", [""] + sorted(ut_dict.keys()), key=f"ut_{form_id}")
-
-with col2:
-    fecha = st.date_input("Fecha", value=datetime.now(ZONA_PERU).date(), key=f"fecha_{form_id}")
-
-with col3:
-    codigos = [""] + sorted(ut_dict.get(ut, {}).keys()) if ut else [""]
-    codigo_usuario = st.selectbox("Código de Usuario", codigos, key=f"codigo_{form_id}")
-
-# 🔥 ACTUALIZACIÓN AUTOMÁTICA DEL NOMBRE
-if ut and codigo_usuario:
-    st.session_state[f"nombres_{form_id}"] = ut_dict[ut].get(codigo_usuario, "")
-else:
-    st.session_state[f"nombres_{form_id}"] = ""
-
-with col4:
-    st.text_input("Apellidos y Nombres", key=f"nombres_{form_id}", disabled=True)
-
-with col5:
-    cargo = st.selectbox(
-        "Cargo/Puesto",
-        ["", "JEFE DE UNIDAD TERRITORIAL", "COORDINADOR TERRITORIAL","PROMOTOR",
-         "TECNICO EN ATENCION AL USUARIO","ASISTENTE TECNICO EN SABERES PRODUCTIVOS",
-         "AUXILIAR ADMINISTRATIVO","CONDUCTOR","TECNICO EN ATENCION DE PLATAFORMA",
-         "ASISTENTE ADMINISTRATIVO","OTRO"],
-        key=f"cargo_{form_id}"
-    )
-
-# ================= FORM ACTIVIDADES =================
+# ================= FORMULARIO =================
 with st.form(key=f"form_{form_id}"):
+
+    st.title("📋 Ficha de Registro de Actividades UT")
+
+    col1, col2, col3, col4, col5 = st.columns(5)
+
+    with col1:
+        ut = st.selectbox(
+            "UT",
+            [""] + sorted(ut_dict.keys()),
+            key=f"ut_{form_id}"
+        )
+
+    with col2:
+        fecha = st.date_input(
+            "Fecha",
+            value=datetime.now(ZONA_PERU).date(),
+            key=f"fecha_{form_id}"
+        )
+
+    with col3:
+        codigos = [""] + sorted(ut_dict.get(ut, {}).keys()) if ut else [""]
+        codigo_usuario = st.selectbox(
+            "Código de Usuario",
+            codigos,
+            key=f"codigo_{form_id}"
+        )
+
+    with col4:
+        nombres = ""
+        if ut and codigo_usuario:
+            nombres = ut_dict[ut].get(codigo_usuario, "")
+
+        st.text_input(
+            "Apellidos y Nombres",
+            value=nombres,
+            disabled=True,
+            key=f"nombres_{form_id}"
+        )
+
+    with col5:
+        cargo = st.selectbox(
+            "Cargo/Puesto",
+            ["", "JEFE DE UNIDAD TERRITORIAL", "COORDINADOR TERRITORIAL","PROMOTOR",
+             "TECNICO EN ATENCION AL USUARIO",
+             "ASISTENTE TECNICO EN SABERES PRODUCTIVOS",
+             "AUXILIAR ADMINISTRATIVO","CONDUCTOR",
+             "TECNICO EN ATENCION DE PLATAFORMA",
+             "ASISTENTE ADMINISTRATIVO","OTRO"],
+            key=f"cargo_{form_id}"
+        )
+
+    st.markdown("---")
 
     respuestas = {}
     for act, subs in actividades.items():
@@ -163,6 +189,7 @@ def reiniciar_formulario():
 # ================= ACCIONES =================
 if guardar:
     nombres = st.session_state.get(f"nombres_{form_id}", "")
+
     if not ut or not codigo_usuario or not nombres or not cargo:
         st.warning("⚠️ Complete todos los datos generales")
     else:
