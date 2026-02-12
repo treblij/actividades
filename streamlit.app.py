@@ -66,10 +66,6 @@ if st.button("🔓 Cerrar sesión"):
     st.session_state.clear()
     st.rerun()
 
-# ================= FORM ID =================
-if "form_id" not in st.session_state:
-    st.session_state.form_id = 0
-
 # ================= CARGAR DATOS PERSONALES =================
 datos = cargar_datos_personales()
 
@@ -129,29 +125,29 @@ actividades = {
 
 actividades_con_detalle = ["VISITAS", "PAGO RBU", "MUNICIPALIDAD", "CAMPAÑAS", "REUNIONES"]
 
-# ================= FORMULARIO =================
-with st.form(key=f"form_{st.session_state.form_id}"):
+st.subheader("Actividades")
 
-    respuestas = {}
+respuestas = {}
 
-    for act, subs in actividades.items():
-        seleccionadas = st.multiselect(act, subs, key=f"multi_{act}")
-        respuestas[act] = seleccionadas
+for act, subs in actividades.items():
+    seleccionadas = st.multiselect(act, subs, key=f"multi_{act}")
+    respuestas[act] = seleccionadas
 
-        if act in actividades_con_detalle:
-            activo = True if seleccionadas else False
-            st.text_area(
-                f"Detalle adicional para {act}:",
-                key=f"detalle_{act}",
-                disabled=not activo,
-                placeholder=f"Ingrese comentario de {act}..."
-            )
+    if act in actividades_con_detalle:
+        activo = True if seleccionadas else False
+        st.text_area(
+            f"Detalle adicional para {act}:",
+            key=f"detalle_{act}",
+            disabled=not activo,
+            placeholder=f"Ingrese comentario de {act}..."
+        )
 
-    otras = st.text_area("Otras actividades", key="otras")
+otras = st.text_area("Otras actividades", key="otras")
 
-    col1, col2 = st.columns(2)
-    guardar = col1.form_submit_button("💾 Guardar registro")
-    nuevo = col2.form_submit_button("🆕 Nuevo registro")
+# ================= BOTONES =================
+col1, col2 = st.columns(2)
+guardar = col1.button("💾 Guardar registro")
+nuevo = col2.button("🆕 Nuevo registro")
 
 # ================= GUARDAR =================
 if guardar:
@@ -160,6 +156,7 @@ if guardar:
     else:
         client = conectar_sheet()
         sheet = client.open_by_key(SHEET_ID).sheet1
+
         timestamp = datetime.now(ZONA_PERU).strftime("%d/%m/%Y %H:%M:%S")
 
         filas = []
@@ -188,20 +185,9 @@ if guardar:
 
 # ================= NUEVO REGISTRO =================
 if nuevo:
-    # Limpiar multiselect
-    for act in actividades.keys():
-        if f"multi_{act}" in st.session_state:
-            del st.session_state[f"multi_{act}"]
+    # Limpiar todos los campos excepto login
+    for key in list(st.session_state.keys()):
+        if key != "login":
+            del st.session_state[key]
 
-    # Limpiar detalles
-    for act in actividades_con_detalle:
-        if f"detalle_{act}" in st.session_state:
-            del st.session_state[f"detalle_{act}"]
-
-    # Limpiar otras
-    if "otras" in st.session_state:
-        del st.session_state["otras"]
-
-    # Forzar formulario nuevo
-    st.session_state.form_id += 1
     st.rerun()
