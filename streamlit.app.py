@@ -85,14 +85,14 @@ st.title("📋 Ficha de Registro de Actividades UT")
 col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
-    ut = st.selectbox("UT", [""] + sorted(ut_dict.keys()))
+    ut = st.selectbox("UT", [""] + sorted(ut_dict.keys()), key="ut")
 
 with col2:
-    fecha = st.date_input("Fecha", value=datetime.now(ZONA_PERU).date())
+    fecha = st.date_input("Fecha", value=datetime.now(ZONA_PERU).date(), key="fecha")
 
 with col3:
     codigos = [""] + sorted(ut_dict.get(ut, {}).keys()) if ut else [""]
-    codigo_usuario = st.selectbox("Código de Usuario", codigos)
+    codigo_usuario = st.selectbox("Código de Usuario", codigos, key="codigo")
 
 with col4:
     nombres = ""
@@ -108,7 +108,8 @@ with col5:
          "ASISTENTE TECNICO EN SABERES PRODUCTIVOS",
          "AUXILIAR ADMINISTRATIVO","CONDUCTOR",
          "TECNICO EN ATENCION DE PLATAFORMA",
-         "ASISTENTE ADMINISTRATIVO","OTRO"]
+         "ASISTENTE ADMINISTRATIVO","OTRO"],
+        key="cargo"
     )
 
 # ================= ACTIVIDADES =================
@@ -124,17 +125,12 @@ actividades = {
 
 actividades_con_detalle = ["VISITAS", "PAGO RBU", "MUNICIPALIDAD", "CAMPAÑAS", "REUNIONES"]
 
-# Inicializar session_state
-for act in actividades_con_detalle:
-    if f"detalle_{act}" not in st.session_state:
-        st.session_state[f"detalle_{act}"] = ""
-
 st.subheader("Actividades")
 
 respuestas = {}
 
 for act, subs in actividades.items():
-    seleccionadas = st.multiselect(act, subs)
+    seleccionadas = st.multiselect(act, subs, key=f"multi_{act}")
     respuestas[act] = seleccionadas
 
     if act in actividades_con_detalle:
@@ -146,7 +142,7 @@ for act, subs in actividades.items():
             placeholder=f"Ingrese comentario de {act}..."
         )
 
-otras = st.text_area("Otras actividades")
+otras = st.text_area("Otras actividades", key="otras")
 
 # ================= BOTONES =================
 col1, col2 = st.columns(2)
@@ -187,5 +183,11 @@ if guardar:
             sheet.append_rows(filas)
             st.success("Se registró tu información ✅")
 
+# ================= NUEVO REGISTRO =================
 if nuevo:
+    # Limpiar todos los campos excepto login
+    for key in list(st.session_state.keys()):
+        if key != "login":
+            del st.session_state[key]
+
     st.rerun()
