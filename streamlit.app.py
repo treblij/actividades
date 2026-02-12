@@ -37,6 +37,7 @@ if "login" not in st.session_state:
 
 usuarios_data = obtener_usuarios()
 usuarios = {}
+
 for fila in usuarios_data:
     if fila.get("usuario") and fila.get("password_hash") and fila.get("activo"):
         usuarios[fila["usuario"]] = str(fila["password_hash"]).strip()
@@ -44,12 +45,13 @@ for fila in usuarios_data:
 def login():
     st.image("logo.png", width=150)
     st.subheader("🔐 Ingreso al Sistema")
+
     usuario = st.text_input("Usuario")
     contrasena = st.text_input("Contraseña", type="password")
+
     if st.button("Ingresar"):
         if usuario in usuarios and usuarios[usuario] == contrasena:
             st.session_state.login = True
-            st.session_state.form_id = 0
             st.success("Bienvenido")
             st.rerun()
         else:
@@ -68,15 +70,15 @@ if st.button("🔓 Cerrar sesión"):
 if "form_id" not in st.session_state:
     st.session_state.form_id = 0
 
-form_id = st.session_state.form_id
-
 # ================= CARGAR DATOS PERSONALES =================
 datos = cargar_datos_personales()
+
 ut_dict = {}
 for fila in datos:
     ut = fila.get("UT", "").strip()
     codigo = fila.get("CODIGO  DE USUARIO", "").strip()
     nombre = fila.get("APELLIDOS Y NOMBRES", "").strip()
+
     if ut and codigo:
         ut_dict.setdefault(ut, {})[codigo] = nombre
 
@@ -87,14 +89,14 @@ st.title("📋 Ficha de Registro de Actividades UT")
 col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
-    ut = st.selectbox("UT", [""] + sorted(ut_dict.keys()), key="ut_global")
+    ut = st.selectbox("UT", [""] + sorted(ut_dict.keys()), key="ut")
 
 with col2:
-    fecha = st.date_input("Fecha", value=datetime.now(ZONA_PERU).date(), key="fecha_global")
+    fecha = st.date_input("Fecha", value=datetime.now(ZONA_PERU).date(), key="fecha")
 
 with col3:
     codigos = [""] + sorted(ut_dict.get(ut, {}).keys()) if ut else [""]
-    codigo_usuario = st.selectbox("Código de Usuario", codigos, key="codigo_global")
+    codigo_usuario = st.selectbox("Código de Usuario", codigos, key="codigo")
 
 with col4:
     nombres = ""
@@ -111,7 +113,7 @@ with col5:
          "AUXILIAR ADMINISTRATIVO","CONDUCTOR",
          "TECNICO EN ATENCION DE PLATAFORMA",
          "ASISTENTE ADMINISTRATIVO","OTRO"],
-        key="cargo_global"
+        key="cargo"
     )
 
 # ================= ACTIVIDADES =================
@@ -127,30 +129,25 @@ actividades = {
 
 actividades_con_detalle = ["VISITAS", "PAGO RBU", "MUNICIPALIDAD", "CAMPAÑAS", "REUNIONES"]
 
-# ================= FORM DE ACTIVIDADES =================
-with st.form(key=f"form_{form_id}"):
+# ================= FORMULARIO =================
+with st.form(key=f"form_{st.session_state.form_id}"):
 
     respuestas = {}
-    comentarios = {}
 
     for act, subs in actividades.items():
-        seleccionadas = st.multiselect(
-            act,
-            subs,
-            key=f"multi_{act}_{form_id}"
-        )
+        seleccionadas = st.multiselect(act, subs, key=f"multi_{act}")
         respuestas[act] = seleccionadas
 
         if act in actividades_con_detalle:
-            # Activar campo solo si hay subactividad seleccionada
-            comentarios[act] = st.text_area(
+            activo = True if seleccionadas else False
+            st.text_area(
                 f"Detalle adicional para {act}:",
-                key=f"detalle_{act}_{form_id}",
-                disabled=(len(seleccionadas) == 0),
-                placeholder="Ingrese comentario o detalle..."
+                key=f"detalle_{act}",
+                disabled=not activo,
+                placeholder=f"Ingrese comentario de {act}..."
             )
 
-    otras = st.text_area("Otras actividades", key=f"otras_{form_id}")
+    otras = st.text_area("Otras actividades", key="otras")
 
     col1, col2 = st.columns(2)
     guardar = col1.form_submit_button("💾 Guardar registro")
@@ -164,10 +161,14 @@ if guardar:
         client = conectar_sheet()
         sheet = client.open_by_key(SHEET_ID).sheet1
         timestamp = datetime.now(ZONA_PERU).strftime("%d/%m/%Y %H:%M:%S")
+
         filas = []
 
         for act, subs in respuestas.items():
-            comentario = comentarios.get(act, "").upper()
+            comentario = ""
+            if act in actividades_con_detalle:
+                comentario = st.session_state.get(f"detalle_{act}", "").upper()
+
             for sub in subs:
                 filas.append([
                     timestamp,
@@ -178,16 +179,29 @@ if guardar:
                     cargo,
                     act,
                     sub,
-                    comentario or otras.upper()
+                    comentario or (otras or "").upper()
                 ])
 
         if filas:
             sheet.append_rows(filas)
             st.success("Se registró tu información ✅")
-            st.session_state.form_id += 1
-            st.rerun()
 
 # ================= NUEVO REGISTRO =================
 if nuevo:
+    # Limpiar multiselect
+    for act in actividades.keys():
+        if f"multi_{act}" in st.session_state:
+            del st.session_state[f"multi_{act}"]
+
+    # Limpiar detalles
+    for act in actividades_con_detalle:
+        if f"detalle_{act}" in st.session_state:
+            del st.session_state[f"detalle_{act}"]
+
+    # Limpiar otras
+    if "otras" in st.session_state:
+        del st.session_state["otras"]
+
+    # Forzar formulario nuevo
     st.session_state.form_id += 1
     st.rerun()
