@@ -131,6 +131,7 @@ actividades_con_detalle = ["VISITAS", "PAGO RBU", "MUNICIPALIDAD", "CAMPAÑAS", 
 with st.form(key=f"form_{form_id}"):
 
     respuestas = {}
+    comentarios = {}
 
     for act, subs in actividades.items():
         seleccionadas = st.multiselect(
@@ -140,19 +141,16 @@ with st.form(key=f"form_{form_id}"):
         )
         respuestas[act] = seleccionadas
 
-        # Campo de detalle debajo de actividades específicas
         if act in actividades_con_detalle:
-            st.text_area(
+            # Activar campo solo si hay subactividad seleccionada
+            comentarios[act] = st.text_area(
                 f"Detalle adicional para {act}:",
                 key=f"detalle_{act}_{form_id}",
                 disabled=(len(seleccionadas) == 0),
                 placeholder="Ingrese comentario o detalle..."
             )
 
-    otras = st.text_area(
-        "Otras actividades",
-        key=f"otras_{form_id}"
-    )
+    otras = st.text_area("Otras actividades", key=f"otras_{form_id}")
 
     col1, col2 = st.columns(2)
     guardar = col1.form_submit_button("💾 Guardar registro")
@@ -169,7 +167,7 @@ if guardar:
         filas = []
 
         for act, subs in respuestas.items():
-            comentario = st.session_state.get(f"detalle_{act}_{form_id}", "").upper()
+            comentario = comentarios.get(act, "").upper()
             for sub in subs:
                 filas.append([
                     timestamp,
@@ -180,7 +178,7 @@ if guardar:
                     cargo,
                     act,
                     sub,
-                    comentario or st.session_state.get(f"otras_{form_id}", "").upper()
+                    comentario or otras.upper()
                 ])
 
         if filas:
