@@ -66,11 +66,7 @@ if st.button("🔓 Cerrar sesión"):
     st.session_state.clear()
     st.rerun()
 
-# ================= FORM ID =================
-if "form_id" not in st.session_state:
-    st.session_state.form_id = 0
-
-# ================= CARGAR DATOS PERSONALES =================
+# ================= DATOS PERSONALES =================
 datos = cargar_datos_personales()
 
 ut_dict = {}
@@ -118,40 +114,34 @@ with col5:
 
 # ================= ACTIVIDADES =================
 actividades = {
-    "BIENESTAR": ["VACACIONES","ACTIVO","LICENCIA SINDICAL","EXAMEN MEDICO OCUPACIONAL","LICENCIA MEDICA","ONOMASTICO","DESCANSO FISICO POR COMPENSACION"],
-    "VISITAS": ["VISITAS DOMICILIARIAS A USUARIOS REGULARES","BARRIDOS","VISITAS A USUARIOS CON EMPRENDIMIENTOS","VISITAS A TERCEROS AUTORIZADOS","VISITAS DE CONVOCATORIA DE TE ACOMPAÑO","CONVOCATORIA PARA CAMPAÑAS","VISITAS REMOTAS"],
-    "PAGO RBU": ["SUPERVISION Y ACOMPAÑAMIENTO DEL PAGO","TARJETIZACION","SUPERVISION ETV"],
+    "VISITAS": ["VISITAS DOMICILIARIAS","BARRIDOS","VISITAS REMOTAS"],
+    "PAGO RBU": ["SUPERVISION","TARJETIZACION"],
     "MUNICIPALIDAD": ["ATENCION EN ULE","PARTICIPACION EN IAL"],
-    "GABINETE": ["REGISTRO DE DJ","ELABORACION DE INFORMES, PRIORIZACIONES Y OTROS","GABINETE TE ACOMPAÑO","MAPEO DE USUARIOS","SUPERVISION DE PROMOTORES","APOYO UT","REGISTRO DE EMPRENDIMIENTOS","REGISTRO DE DONACIONES","DESPLAZAMIENTO A COMISIONES","ATENCION AL USUARIO Y TRAMITES","ASISTENCIA Y CAPACITACION A ACTORES EXTERNOS","CAPACITACIONES AL PERSONAL","REGISTRO DE SABERES","ASISTENCIA TECNICA SABERES PRODUCTIVOS"],
-    "CAMPAÑAS": ["PARTICIPACION EN EMERGENCIAS (INCENDIOS)","AVANZADA PARA CAMPAÑAS","PARTICIPACION EN CAMPAÑAS DE ENTREGA DE DONACIONES","PARTICIPACION EN TE ACOMPAÑO","DIALOGOS DE SABERES","ENCUENTROS DE SABERES PRODUCTIVOS","TRANSMISION INTER GENERACIONAL","FERIAS DE EMPRENDIMIENTOS"],
-    "REUNIONES": ["REUNION EQUIPO UT","REUNION CON SECTOR SALUD DIRESA, RIS, IPRESS","REUNION SABERES","REUNION CON GL"]
+    "CAMPAÑAS": ["EMERGENCIAS","FERIAS"],
+    "REUNIONES": ["REUNION EQUIPO UT","REUNION CON GL"]
 }
 
-actividades_con_detalle = ["VISITAS", "PAGO RBU", "MUNICIPALIDAD", "CAMPAÑAS", "REUNIONES"]
+st.subheader("Actividades")
 
-# ================= FORMULARIO =================
-with st.form(key=f"form_{st.session_state.form_id}"):
+respuestas = {}
 
-    respuestas = {}
+for act, subs in actividades.items():
+    seleccionadas = st.multiselect(act, subs, key=f"multi_{act}")
+    respuestas[act] = seleccionadas
 
-    for act, subs in actividades.items():
-        seleccionadas = st.multiselect(act, subs, key=f"multi_{act}")
-        respuestas[act] = seleccionadas
+    st.text_area(
+        f"Detalle adicional para {act}:",
+        key=f"detalle_{act}",
+        disabled=not bool(seleccionadas),
+        placeholder="Ingrese comentario..."
+    )
 
-        if act in actividades_con_detalle:
-            activo = True if seleccionadas else False
-            st.text_area(
-                f"Detalle adicional para {act}:",
-                key=f"detalle_{act}",
-                disabled=not activo,
-                placeholder=f"Ingrese comentario de {act}..."
-            )
+otras = st.text_area("Otras actividades", key="otras")
 
-    otras = st.text_area("Otras actividades", key="otras")
-
-    col1, col2 = st.columns(2)
-    guardar = col1.form_submit_button("💾 Guardar registro")
-    nuevo = col2.form_submit_button("🆕 Nuevo registro")
+# ================= BOTONES =================
+col1, col2 = st.columns(2)
+guardar = col1.button("💾 Guardar registro")
+nuevo = col2.button("🆕 Nuevo registro")
 
 # ================= GUARDAR =================
 if guardar:
@@ -165,10 +155,7 @@ if guardar:
         filas = []
 
         for act, subs in respuestas.items():
-            comentario = ""
-            if act in actividades_con_detalle:
-                comentario = st.session_state.get(f"detalle_{act}", "").upper()
-
+            comentario = st.session_state.get(f"detalle_{act}", "").upper()
             for sub in subs:
                 filas.append([
                     timestamp,
@@ -188,20 +175,8 @@ if guardar:
 
 # ================= NUEVO REGISTRO =================
 if nuevo:
-    # Limpiar multiselect
-    for act in actividades.keys():
-        if f"multi_{act}" in st.session_state:
-            del st.session_state[f"multi_{act}"]
+    for key in list(st.session_state.keys()):
+        if key != "login":
+            del st.session_state[key]
 
-    # Limpiar detalles
-    for act in actividades_con_detalle:
-        if f"detalle_{act}" in st.session_state:
-            del st.session_state[f"detalle_{act}"]
-
-    # Limpiar otras
-    if "otras" in st.session_state:
-        del st.session_state["otras"]
-
-    # Forzar formulario nuevo
-    st.session_state.form_id += 1
     st.rerun()
