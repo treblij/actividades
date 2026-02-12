@@ -88,7 +88,7 @@ for fila in datos:
 # ================= TITULO =================
 st.title("📋 Ficha de Registro de Actividades UT")
 
-# ================= DATOS GENERALES (FUERA DEL FORM PARA CASCADA) =================
+# ================= DATOS GENERALES =================
 col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
@@ -147,37 +147,46 @@ actividades = {
     "REUNIONES": ["REUNION EQUIPO UT","REUNION CON SECTOR SALUD DIRESA, RIS, IPRESS","REUNION SABERES","REUNION CON GL"]
 }
 
-# ================= FUNCIONES ADICIONALES =================
+# ================= FUNCIONES =================
+def reiniciar():
+    st.session_state.form_id += 1
+
+# Actividades que requieren detalle por subactividad
 actividades_con_comentario = ["VISITAS", "PAGO RBU", "MUNICIPALIDAD", "CAMPAÑAS", "REUNIONES"]
 
-# Inicializar comentarios en session_state si no existen
+# Inicializar comentarios por subactividad si no existen
 for act in actividades_con_comentario:
-    if act not in st.session_state:
-        st.session_state[f"comentario_{act}"] = ""
+    for sub in actividades.get(act, []):
+        key_sub = f"detalle_{act}_{sub}"
+        if key_sub not in st.session_state:
+            st.session_state[key_sub] = ""
 
-# ================= FORM DE ACTIVIDADES CON TEXTBOX =================
+# ================= FORMULARIO =================
 with st.form(key=f"form_{form_id}"):
 
     respuestas = {}
-    for act, subs in actividades.items():
-        respuestas[act] = st.multiselect(act, subs)
-        
-        # Agregar textbox si corresponde
-        if act in actividades_con_comentario and respuestas[act]:
-            st.session_state[f"comentario_{act}"] = st.text_input(
-                f"Detalle adicional para {act}:",
-                value=st.session_state.get(f"comentario_{act}", "")
-            )
+    detalles_subactividad = {}
 
-    otras = st.text_area("Otras actividades")
+    for act, subs in actividades.items():
+        seleccionadas = st.multiselect(act, subs, key=f"multi_{act}")
+        respuestas[act] = seleccionadas
+
+        # Crear textbox por cada subactividad seleccionada
+        if act in actividades_con_comentario:
+            for sub in seleccionadas:
+                key_sub = f"detalle_{act}_{sub}"
+                st.session_state[key_sub] = st.text_input(
+                    f"Detalle adicional para '{sub}' ({act}):",
+                    value=st.session_state.get(key_sub, ""),
+                    key=key_sub
+                )
+                detalles_subactividad[sub] = st.session_state[key_sub]
+
+    otras = st.text_area("Otras actividades", key=f"otras_{form_id}")
 
     col1, col2 = st.columns(2)
     guardar = col1.form_submit_button("💾 Guardar registro")
     nuevo = col2.form_submit_button("🆕 Nuevo registro")
-
-# ================= FUNCIONES =================
-def reiniciar():
-    st.session_state.form_id += 1
 
 # ================= GUARDAR =================
 if guardar:
@@ -194,7 +203,7 @@ if guardar:
             for sub in subs:
                 comentario = ""
                 if act in actividades_con_comentario:
-                    comentario = st.session_state.get(f"comentario_{act}", "").upper()
+                    comentario = st.session_state.get(f"detalle_{act}_{sub}", "").upper()
                 filas.append([
                     timestamp,
                     ut,
@@ -209,7 +218,7 @@ if guardar:
 
         if filas:
             sheet.append_rows(filas)
-            st.info("Se registró tu información ✅")  # Mensaje solicitado
+            st.info("Se registró tu información ✅")
             reiniciar()
             st.rerun()
 
