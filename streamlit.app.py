@@ -147,12 +147,27 @@ actividades = {
     "REUNIONES": ["REUNION EQUIPO UT","REUNION CON SECTOR SALUD DIRESA, RIS, IPRESS","REUNION SABERES","REUNION CON GL"]
 }
 
-# ================= FORM DE ACTIVIDADES =================
+# ================= FUNCIONES ADICIONALES =================
+actividades_con_comentario = ["VISITAS", "PAGO RBU", "MUNICIPALIDAD", "CAMPAÑAS", "REUNIONES"]
+
+# Inicializar comentarios en session_state si no existen
+for act in actividades_con_comentario:
+    if act not in st.session_state:
+        st.session_state[f"comentario_{act}"] = ""
+
+# ================= FORM DE ACTIVIDADES CON TEXTBOX =================
 with st.form(key=f"form_{form_id}"):
 
     respuestas = {}
     for act, subs in actividades.items():
         respuestas[act] = st.multiselect(act, subs)
+        
+        # Agregar textbox si corresponde
+        if act in actividades_con_comentario and respuestas[act]:
+            st.session_state[f"comentario_{act}"] = st.text_input(
+                f"Detalle adicional para {act}:",
+                value=st.session_state.get(f"comentario_{act}", "")
+            )
 
     otras = st.text_area("Otras actividades")
 
@@ -177,6 +192,9 @@ if guardar:
         filas = []
         for act, subs in respuestas.items():
             for sub in subs:
+                comentario = ""
+                if act in actividades_con_comentario:
+                    comentario = st.session_state.get(f"comentario_{act}", "").upper()
                 filas.append([
                     timestamp,
                     ut,
@@ -186,12 +204,12 @@ if guardar:
                     cargo,
                     act,
                     sub,
-                    (otras or "").upper()
+                    comentario or (otras or "").upper()
                 ])
 
         if filas:
             sheet.append_rows(filas)
-            st.success("Registro guardado correctamente")
+            st.info("Se registró tu información ✅")  # Mensaje solicitado
             reiniciar()
             st.rerun()
 
