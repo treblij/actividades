@@ -36,7 +36,6 @@ if "login" not in st.session_state:
     st.session_state.login = False
 
 usuarios_data = obtener_usuarios()
-
 usuarios = {}
 for fila in usuarios_data:
     if fila.get("usuario") and fila.get("password_hash") and fila.get("activo"):
@@ -70,18 +69,15 @@ if st.button("🔓 Cerrar sesión"):
 # ================= FORM ID =================
 if "form_id" not in st.session_state:
     st.session_state.form_id = 0
-
 form_id = st.session_state.form_id
 
 # ================= CARGAR DATOS PERSONALES =================
 datos = cargar_datos_personales()
-
 ut_dict = {}
 for fila in datos:
     ut = fila.get("UT", "").strip()
     codigo = fila.get("CODIGO  DE USUARIO", "").strip()
     nombre = fila.get("APELLIDOS Y NOMBRES", "").strip()
-
     if ut and codigo:
         ut_dict.setdefault(ut, {})[codigo] = nombre
 
@@ -92,37 +88,20 @@ st.title("📋 Ficha de Registro de Actividades UT")
 col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
-    ut = st.selectbox(
-        "UT",
-        [""] + sorted(ut_dict.keys()),
-        key="ut_global"
-    )
+    ut = st.selectbox("UT", [""] + sorted(ut_dict.keys()), key="ut_global")
 
 with col2:
-    fecha = st.date_input(
-        "Fecha",
-        value=datetime.now(ZONA_PERU).date(),
-        key="fecha_global"
-    )
+    fecha = st.date_input("Fecha", value=datetime.now(ZONA_PERU).date(), key="fecha_global")
 
 with col3:
     codigos = [""] + sorted(ut_dict.get(ut, {}).keys()) if ut else [""]
-    codigo_usuario = st.selectbox(
-        "Código de Usuario",
-        codigos,
-        key="codigo_global"
-    )
+    codigo_usuario = st.selectbox("Código de Usuario", codigos, key="codigo_global")
 
 with col4:
     nombres = ""
     if ut and codigo_usuario:
         nombres = ut_dict[ut].get(codigo_usuario, "")
-
-    st.text_input(
-        "Apellidos y Nombres",
-        value=nombres,
-        disabled=True
-    )
+    st.text_input("Apellidos y Nombres", value=nombres, disabled=True)
 
 with col5:
     cargo = st.selectbox(
@@ -151,13 +130,11 @@ actividades = {
 def reiniciar():
     st.session_state.form_id += 1
 
-# Actividades que tendrán campo de detalle activable
+# Inicializar campos de detalle en session_state
 actividades_con_detalle = ["VISITAS", "PAGO RBU", "MUNICIPALIDAD", "CAMPAÑAS", "REUNIONES"]
-
-# Inicializar comentarios en session_state si no existen
 for act in actividades_con_detalle:
-    if f"comentario_{act}" not in st.session_state:
-        st.session_state[f"comentario_{act}"] = ""
+    if f"detalle_{act}" not in st.session_state:
+        st.session_state[f"detalle_{act}"] = ""
 
 # ================= FORMULARIO =================
 with st.form(key=f"form_{form_id}"):
@@ -165,16 +142,18 @@ with st.form(key=f"form_{form_id}"):
     respuestas = {}
 
     for act, subs in actividades.items():
+        # Selección de subactividades
         seleccionadas = st.multiselect(act, subs, key=f"multi_{act}")
         respuestas[act] = seleccionadas
 
-        # Campo de detalle activable solo si hay subactividad seleccionada
+        # Textarea debajo de cada actividad específica
         if act in actividades_con_detalle:
             activo = True if seleccionadas else False
-            st.session_state[f"comentario_{act}"] = st.text_input(
+            st.session_state[f"detalle_{act}"] = st.text_area(
                 f"Detalle adicional para {act}:",
-                value=st.session_state.get(f"comentario_{act}", ""),
-                disabled=not activo
+                value=st.session_state.get(f"detalle_{act}", ""),
+                disabled=not activo,
+                key=f"textarea_{act}"
             )
 
     otras = st.text_area("Otras actividades", key=f"otras_{form_id}")
@@ -190,14 +169,13 @@ if guardar:
     else:
         client = conectar_sheet()
         sheet = client.open_by_key(SHEET_ID).sheet1
-
         timestamp = datetime.now(ZONA_PERU).strftime("%d/%m/%Y %H:%M:%S")
 
         filas = []
         for act, subs in respuestas.items():
             comentario = ""
             if act in actividades_con_detalle:
-                comentario = st.session_state.get(f"comentario_{act}", "").upper()
+                comentario = st.session_state.get(f"detalle_{act}", "").upper()
             for sub in subs:
                 filas.append([
                     timestamp,
