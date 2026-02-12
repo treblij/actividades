@@ -142,16 +142,18 @@ with st.form(key=f"form_{form_id}"):
     respuestas = {}
 
     for act, subs in actividades.items():
-        # Selección de subactividades
+        # Multiselect de subactividades
         seleccionadas = st.multiselect(act, subs, key=f"multi_{act}")
         respuestas[act] = seleccionadas
 
-        # Textarea debajo de cada actividad específica
+        # Textarea debajo de actividades específicas
         if act in actividades_con_detalle:
+            # Siempre visible, solo habilitado si hay subactividad
             activo = True if seleccionadas else False
             st.session_state[f"detalle_{act}"] = st.text_area(
-                f"Detalle adicional para {act}:",
+                label=f"Detalle adicional para {act}:",
                 value=st.session_state.get(f"detalle_{act}", ""),
+                placeholder=f"Ingrese detalles de {act}...",
                 disabled=not activo,
                 key=f"textarea_{act}"
             )
