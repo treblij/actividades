@@ -151,36 +151,31 @@ actividades = {
 def reiniciar():
     st.session_state.form_id += 1
 
-# Actividades que requieren detalle por subactividad
-actividades_con_comentario = ["VISITAS", "PAGO RBU", "MUNICIPALIDAD", "CAMPAÑAS", "REUNIONES"]
+# Actividades que tendrán campo de detalle activable
+actividades_con_detalle = ["VISITAS", "PAGO RBU", "MUNICIPALIDAD", "CAMPAÑAS", "REUNIONES"]
 
-# Inicializar comentarios por subactividad si no existen
-for act in actividades_con_comentario:
-    for sub in actividades.get(act, []):
-        key_sub = f"detalle_{act}_{sub}"
-        if key_sub not in st.session_state:
-            st.session_state[key_sub] = ""
+# Inicializar comentarios en session_state si no existen
+for act in actividades_con_detalle:
+    if f"comentario_{act}" not in st.session_state:
+        st.session_state[f"comentario_{act}"] = ""
 
 # ================= FORMULARIO =================
 with st.form(key=f"form_{form_id}"):
 
     respuestas = {}
-    detalles_subactividad = {}
 
     for act, subs in actividades.items():
         seleccionadas = st.multiselect(act, subs, key=f"multi_{act}")
         respuestas[act] = seleccionadas
 
-        # Crear textbox por cada subactividad seleccionada
-        if act in actividades_con_comentario:
-            for sub in seleccionadas:
-                key_sub = f"detalle_{act}_{sub}"
-                st.session_state[key_sub] = st.text_input(
-                    f"Detalle adicional para '{sub}' ({act}):",
-                    value=st.session_state.get(key_sub, ""),
-                    key=key_sub
-                )
-                detalles_subactividad[sub] = st.session_state[key_sub]
+        # Campo de detalle activable solo si hay subactividad seleccionada
+        if act in actividades_con_detalle:
+            activo = True if seleccionadas else False
+            st.session_state[f"comentario_{act}"] = st.text_input(
+                f"Detalle adicional para {act}:",
+                value=st.session_state.get(f"comentario_{act}", ""),
+                disabled=not activo
+            )
 
     otras = st.text_area("Otras actividades", key=f"otras_{form_id}")
 
@@ -200,10 +195,10 @@ if guardar:
 
         filas = []
         for act, subs in respuestas.items():
+            comentario = ""
+            if act in actividades_con_detalle:
+                comentario = st.session_state.get(f"comentario_{act}", "").upper()
             for sub in subs:
-                comentario = ""
-                if act in actividades_con_comentario:
-                    comentario = st.session_state.get(f"detalle_{act}_{sub}", "").upper()
                 filas.append([
                     timestamp,
                     ut,
