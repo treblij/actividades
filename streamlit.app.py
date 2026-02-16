@@ -125,6 +125,21 @@ actividades = {
 
 actividades_con_detalle = ["VISITAS", "PAGO RBU", "MUNICIPALIDAD", "CAMPAÑAS", "REUNIONES"]
 
+# 🔹 NUEVO: textos personalizados por actividad
+textos_detalle = {
+    "VISITAS": "Detalle:\n"
+               "DISTRITO:\n"
+               "ZONA:",
+    "PAGO RBU": "Detalle del pago RBU:\n"
+                 "AGENCIA O ETV:",
+    "MUNICIPALIDAD": "Detalle de coordinación con municipalidad:\n"
+                     "NOMBRE DE LA MUNICIPALIDAD:",
+    "CAMPAÑAS": "Detalle de la campaña realizada:\n"
+                "DISTRITO:",
+    "REUNIONES": "Detalle de la reunión:\n"
+                 "NOMBRE DE LA INSTITUCION:"
+}
+
 st.subheader("Actividades")
 
 respuestas = {}
@@ -136,10 +151,10 @@ for act, subs in actividades.items():
     if act in actividades_con_detalle:
         activo = True if seleccionadas else False
         st.text_area(
-            f"Detalle adicional para {act}:",
+            textos_detalle.get(act, "Detalle adicional:"),
             key=f"detalle_{act}",
             disabled=not activo,
-            placeholder=f"Ingrese comentario de {act}..."
+            placeholder="Ingrese el comentario aquí..."
         )
 
 otras = st.text_area("Otras actividades", key="otras")
@@ -185,7 +200,6 @@ if guardar:
 
 # ================= NUEVO REGISTRO =================
 if nuevo:
-    # Limpiar todos los campos excepto login
     for key in list(st.session_state.keys()):
         if key != "login":
             del st.session_state[key]
