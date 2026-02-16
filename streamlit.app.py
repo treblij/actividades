@@ -125,19 +125,12 @@ actividades = {
 
 actividades_con_detalle = ["VISITAS", "PAGO RBU", "MUNICIPALIDAD", "CAMPAÑAS", "REUNIONES"]
 
-# 🔹 NUEVO: textos personalizados por actividad
 textos_detalle = {
-    "VISITAS": "Detalle:\n"
-               "DISTRITO:\n"
-               "ZONA:",
-    "PAGO RBU": "Detalle del pago RBU:\n"
-                 "AGENCIA O ETV:",
-    "MUNICIPALIDAD": "Detalle de coordinación con municipalidad:\n"
-                     "NOMBRE DE LA MUNICIPALIDAD:",
-    "CAMPAÑAS": "Detalle de la campaña realizada:\n"
-                "DISTRITO:",
-    "REUNIONES": "Detalle de la reunión:\n"
-                 "NOMBRE DE LA INSTITUCION:"
+    "VISITAS": "Detalle el lugar de la visitas:\nDISTRITO:\nZONA:",
+    "PAGO RBU": "Detalle del pago RBU:\nAGENCIA O ETV:",
+    "MUNICIPALIDAD": "Detalle de coordinación con municipalidad:\nNOMBRE DE LA MUNICIPALIDAD:",
+    "CAMPAÑAS": "Detalle de la campaña realizada:\nDISTRITO:",
+    "REUNIONES": "Detalle de la reunión:\nNOMBRE DE LA INSTITUCION:"
 }
 
 st.subheader("Actividades")
@@ -150,8 +143,13 @@ for act, subs in actividades.items():
 
     if act in actividades_con_detalle:
         activo = True if seleccionadas else False
+
+        if activo:
+            # Mostrar texto con saltos correctos
+            st.markdown(textos_detalle.get(act).replace("\n", "  \n"))
+
         st.text_area(
-            textos_detalle.get(act, "Detalle adicional:"),
+            label="",
             key=f"detalle_{act}",
             disabled=not activo,
             placeholder="Ingrese el comentario aquí..."
@@ -173,7 +171,6 @@ if guardar:
         sheet = client.open_by_key(SHEET_ID).sheet1
 
         timestamp = datetime.now(ZONA_PERU).strftime("%d/%m/%Y %H:%M:%S")
-
         filas = []
 
         for act, subs in respuestas.items():
@@ -203,5 +200,4 @@ if nuevo:
     for key in list(st.session_state.keys()):
         if key != "login":
             del st.session_state[key]
-
     st.rerun()
